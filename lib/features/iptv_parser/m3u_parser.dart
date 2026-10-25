@@ -1,11 +1,14 @@
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+
 import '../../core/models/iptv_models.dart';
 
 class M3uParser {
   Future<List<Channel>> parseFromUrl(String url) async {
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         return await compute(parse, response.body);
       } else {
@@ -30,13 +33,15 @@ class M3uParser {
 
       if (line.startsWith('#EXTINF:')) {
         if (currentName.isNotEmpty) {
-          channels.add(Channel(
-            name: currentName,
-            url: 'dummy_separator',
-            logo: currentLogo,
-            group: currentGroup,
-            tvgId: currentTvgId,
-          ));
+          channels.add(
+            Channel(
+              name: currentName,
+              url: 'dummy_separator',
+              logo: currentLogo,
+              group: currentGroup,
+              tvgId: currentTvgId,
+            ),
+          );
         }
         currentName = _extractName(line);
         currentLogo = _extractAttribute(line, 'tvg-logo');
@@ -63,29 +68,37 @@ class M3uParser {
         currentTvgId = '';
       }
     }
-    
+
     if (currentName.isNotEmpty) {
-      channels.add(Channel(
-        name: currentName,
-        url: 'dummy_separator',
-        logo: currentLogo,
-        group: currentGroup,
-        tvgId: currentTvgId,
-      ));
+      channels.add(
+        Channel(
+          name: currentName,
+          url: 'dummy_separator',
+          logo: currentLogo,
+          group: currentGroup,
+          tvgId: currentTvgId,
+        ),
+      );
     }
 
     return channels;
   }
 
   static String _extractAttribute(String line, String attribute) {
-    final regexWithQuotes = RegExp('$attribute="([^"]*)"', caseSensitive: false);
+    final regexWithQuotes = RegExp(
+      '$attribute="([^"]*)"',
+      caseSensitive: false,
+    );
     final matchQuotes = regexWithQuotes.firstMatch(line);
     if (matchQuotes != null) {
       final val = matchQuotes.group(1)?.trim() ?? '';
       if (val.isNotEmpty) return val;
     }
 
-    final regexWithoutQuotes = RegExp('$attribute=([^ ]+)', caseSensitive: false);
+    final regexWithoutQuotes = RegExp(
+      '$attribute=([^ ]+)',
+      caseSensitive: false,
+    );
     final matchNoQuotes = regexWithoutQuotes.firstMatch(line);
     return matchNoQuotes?.group(1)?.trim() ?? '';
   }

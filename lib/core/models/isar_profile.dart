@@ -14,7 +14,7 @@ class IsarProfile {
   late String type; // 'm3u' or 'xtreamCodes'
 
   String? m3uUrl;
-  
+
   String? xcUsername;
   String? xcPassword;
   String? xcUrl;

@@ -40,6 +40,7 @@ class Profile {
       name: name ?? this.name,
       type: type ?? this.type,
       m3uUrl: m3uUrl ?? this.m3uUrl,
+      epgUrl: epgUrl ?? this.epgUrl,
       xcUsername: xcUsername ?? this.xcUsername,
       xcPassword: xcPassword ?? this.xcPassword,
       xcUrl: xcUrl ?? this.xcUrl,

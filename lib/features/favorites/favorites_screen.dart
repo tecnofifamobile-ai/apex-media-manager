@@ -1,3 +1,8 @@
+import '../../core/widgets/remote_text_field.dart';
+import '../channels/channel_groups.dart';
+import '../../core/widgets/adaptive_backdrop.dart';
+import '../../core/widgets/remote_action.dart';
+
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -38,38 +43,27 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   String _hoveredCleanName = '';
   final ScrollController _scrollController = ScrollController();
 
-
-  String _getCleanChannelName(String raw) {
-    String s = raw;
-    s = s.replaceAll(RegExp(r'^.*?\|\s*'), '');
-    s = s.replaceAll(RegExp(r'lcampeons', caseSensitive: false), 'LIGA DE CAMPEONES 1');
-    s = s.replaceAll(RegExp(r'(FHD|HD|SD|4K|HEVC|HDR|UHD|H265|VIP|PREMIUM|1080p|720p)', caseSensitive: false), '');
-    s = s.replaceAll(RegExp(r'\[BK\]|\(BK\)|BK', caseSensitive: false), '');
-    s = s.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-    return s.toLowerCase().trim();
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _showCreateCategoryDialog() {
-    final tc = TextEditingController();
+  void _showChangeCategoryDialog(FavoriteChannel fav) {
+    final tc = TextEditingController(text: fav.category);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E2132),
         title: const Text(
-          'Nueva Categoria',
+          'Cambiar Categoría',
           style: TextStyle(color: Colors.white),
         ),
-        content: TextField(
+        content: RemoteTextField(
           controller: tc,
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
-            hintText: 'Nombre de la categoria',
+            hintText: 'Nombre de la nueva categoría',
             hintStyle: TextStyle(color: Colors.white54),
             enabledBorder: UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.white24),
@@ -92,48 +86,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
               if (tc.text.isNotEmpty) {
                 ref
                     .read(favoritesProvider.notifier)
-                    .setCategory('dummy', tc.text);
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Crear', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showChangeCategoryDialog(FavoriteChannel fav) {
-    final tc = TextEditingController(text: fav.category);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E2132),
-        title: const Text(
-          'Cambiar Categoría',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: TextField(
-          controller: tc,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Nombre de la nueva categoría',
-            hintStyle: TextStyle(color: Colors.white54),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white24),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6B4EE6)),
-            onPressed: () {
-              if (tc.text.isNotEmpty) {
-                ref.read(favoritesProvider.notifier).setCategory(fav.cleanName, tc.text.trim());
+                    .setCategory(fav.cleanName, tc.text.trim());
                 Navigator.pop(ctx);
               }
             },
@@ -167,29 +120,23 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                ...data.variants
-                    .map(
-                      (v) => ListTile(
-                        title: Text(
-                          v.name,
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        trailing: data.fav.preferredUrl == v.url
-                            ? const Icon(Icons.check, color: Colors.green)
-                            : null,
-                        onTap: () {
-                          ref
-                              .read(favoritesProvider.notifier)
-                              .updatePreferred(
-                                data.fav.cleanName,
-                                v.url,
-                                v.name,
-                              );
-                          Navigator.pop(ctx);
-                        },
-                      ),
-                    )
-                    .toList(),
+                ...data.variants.map(
+                  (v) => ListTile(
+                    title: Text(
+                      v.name,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    trailing: data.fav.preferredUrl == v.url
+                        ? const Icon(Icons.check, color: Colors.green)
+                        : null,
+                    onTap: () {
+                      ref
+                          .read(favoritesProvider.notifier)
+                          .updatePreferred(data.fav.cleanName, v.url, v.name);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ),
                 const Divider(color: Colors.white24),
               ],
               ListTile(
@@ -226,8 +173,17 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   String formatTitle(String rawName) {
     String name = rawName;
     name = name.replaceAll(RegExp(r'^.*?\|\s*'), '');
-    name = name.replaceAll(RegExp(r'\b(fhd|hd|sd|4k|hevc|hdr|uhd|h265|vip|premium|1080p|720p)\b', caseSensitive: false), '');
-    name = name.replaceAll(RegExp(r'\[bk\]|\(bk\)|bk\b', caseSensitive: false), '');
+    name = name.replaceAll(
+      RegExp(
+        r'\b(fhd|hd|sd|4k|hevc|hdr|uhd|h265|vip|premium|1080p|720p)\b',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    name = name.replaceAll(
+      RegExp(r'\[bk\]|\(bk\)|bk\b', caseSensitive: false),
+      '',
+    );
     name = name.replaceAll(RegExp(r'es\s*\|', caseSensitive: false), '');
     return name.trim();
   }
@@ -268,12 +224,20 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
             itemBuilder: (context, index) {
               final item = items[index];
               final isHovered = _hoveredCleanName == item.fav.cleanName;
-              String fallback = getLogoFallback(item.variants.first.name, logoDb);
+              String fallback = getLogoFallback(
+                item.variants.first.name,
+                logoDb,
+              );
 
               return MouseRegion(
                 onEnter: (_) =>
                     setState(() => _hoveredCleanName = item.fav.cleanName),
-                child: GestureDetector(
+                child: RemoteAction(
+                  onFocusChange: (focused) {
+                    if (focused) {
+                      setState(() => _hoveredCleanName = item.fav.cleanName);
+                    }
+                  },
                   onTap: () {
                     if (item.variants.length > 1 &&
                         item.fav.preferredUrl == null) {
@@ -298,7 +262,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                       boxShadow: isHovered
                           ? [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -307,16 +271,16 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: BackdropFilter(
+                      child: AdaptiveBackdrop(
                         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: isHovered
-                                  ? Colors.white.withOpacity(0.8)
-                                  : Colors.white.withOpacity(0.1),
+                                  ? Colors.white.withValues(alpha: 0.8)
+                                  : Colors.white.withValues(alpha: 0.1),
                               width: isHovered ? 2 : 1,
                             ),
                           ),
@@ -349,7 +313,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                       ),
                                       gradient: LinearGradient(
                                         colors: [
-                                          Colors.black.withOpacity(0.8),
+                                          Colors.black.withValues(alpha: 0.8),
                                           Colors.transparent,
                                         ],
                                         begin: Alignment.bottomCenter,
@@ -390,6 +354,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     final logoDbAsync = ref.watch(logoDatabaseProvider);
     final logoDb = logoDbAsync.value ?? {};
     final allFavs = ref.watch(favoritesProvider);
+    final channelIndex = ref.watch(channelsByIdentityProvider);
 
     Map<String, List<FavoriteChannelData>> channelsByCategory = {};
     FavoriteChannelData? hoveredItem;
@@ -397,7 +362,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     channelsAsync.whenData((channels) {
       if (_hoveredCleanName.isEmpty && allFavs.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() => _hoveredCleanName = allFavs.first.cleanName);
+          if (mounted) {
+            setState(() => _hoveredCleanName = allFavs.first.cleanName);
+          }
         });
       }
 
@@ -405,9 +372,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
         final favsInCat = allFavs.where((f) => f.category == cat).toList();
         List<FavoriteChannelData> favChannels = [];
         for (var fav in favsInCat) {
-          final match = channels
-              .where((c) => _getCleanChannelName(c.name) == fav.cleanName)
-              .toList();
+          final match = channelIndex[fav.cleanName] ?? <Channel>[];
           if (match.isNotEmpty) {
             final data = FavoriteChannelData(fav, match);
             favChannels.add(data);
@@ -442,9 +407,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF0D0F16).withOpacity(0.95),
-                    const Color(0xFF0D0F16).withOpacity(0.7),
-                    const Color(0xFF0D0F16).withOpacity(0.0),
+                    const Color(0xFF0D0F16).withValues(alpha: 0.95),
+                    const Color(0xFF0D0F16).withValues(alpha: 0.7),
+                    const Color(0xFF0D0F16).withValues(alpha: 0.0),
                   ],
                   stops: const [0.0, 0.4, 1.0],
                   begin: Alignment.centerLeft,
@@ -458,9 +423,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF0D0F16).withOpacity(1.0),
-                    const Color(0xFF0D0F16).withOpacity(0.5),
-                    const Color(0xFF0D0F16).withOpacity(0.0),
+                    const Color(0xFF0D0F16).withValues(alpha: 1.0),
+                    const Color(0xFF0D0F16).withValues(alpha: 0.5),
+                    const Color(0xFF0D0F16).withValues(alpha: 0.0),
                   ],
                   stops: const [0.0, 0.4, 0.8],
                   begin: Alignment.bottomCenter,
@@ -533,7 +498,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -554,7 +521,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Text(
@@ -574,7 +543,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                                   child: Text(
                                     'Disfruta de la mejor programacion en directo a traves de ${formatTitle(hoveredItem!.currentChannel.name)}. Deportes, peliculas, series y eventos en vivo disponibles las 24 horas.',
                                     style: TextStyle(
-                                      color: Colors.white.withOpacity(0.7),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       fontSize: 16,
                                       height: 1.4,
                                     ),
@@ -630,8 +601,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
                             channelsByCategory[cat]!,
                             logoDb,
                           ),
-                        )
-                        .toList(),
+                        ),
                     const SizedBox(height: 100),
                   ],
                 );

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -50,7 +51,9 @@ class _HeroImageState extends State<HeroImage> {
     try {
       final response = await http.get(
         Uri.parse(widget.url),
-        headers: {'User-Agent': 'ESPTV_Player/1.0 (Windows NT 10.0; Win64; x64)'},
+        headers: {
+          'User-Agent': 'ESPTV_Player/1.0 (Windows NT 10.0; Win64; x64)',
+        },
       );
       if (response.statusCode == 200) {
         _cache[widget.url] = response.bodyBytes;

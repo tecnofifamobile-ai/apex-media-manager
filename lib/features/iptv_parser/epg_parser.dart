@@ -1,4 +1,5 @@
 import 'package:xml/xml.dart';
+
 import '../../core/models/iptv_models.dart';
 
 class EpgParser {
@@ -11,7 +12,7 @@ class EpgParser {
       final channelId = element.getAttribute('channel') ?? '';
       final startStr = element.getAttribute('start') ?? '';
       final stopStr = element.getAttribute('stop') ?? '';
-      
+
       final titleNode = element.findElements('title').firstOrNull;
       final descNode = element.findElements('desc').firstOrNull;
 
@@ -23,7 +24,7 @@ class EpgParser {
             start: _parseXmltvDate(startStr),
             end: _parseXmltvDate(stopStr),
             channelId: channelId,
-          )
+          ),
         );
       }
     }
@@ -39,7 +40,7 @@ class EpgParser {
       final hour = int.tryParse(dateStr.substring(8, 10)) ?? 0;
       final minute = int.tryParse(dateStr.substring(10, 12)) ?? 0;
       final second = int.tryParse(dateStr.substring(12, 14)) ?? 0;
-      
+
       return DateTime.utc(year, month, day, hour, minute, second);
     }
     return DateTime.now();

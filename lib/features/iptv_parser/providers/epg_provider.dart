@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/models/profile_model.dart';
 import '../../../core/models/iptv_models.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../xmltv_parser.dart';
-import '../xc_epg_parser.dart';
 
 // Este proveedor lee el perfil activo, extrae su EPG URL y lanza el parser apropiado
 final epgProvider = FutureProvider<Map<String, List<EpgProgram>>>((ref) async {
@@ -12,13 +13,18 @@ final epgProvider = FutureProvider<Map<String, List<EpgProgram>>>((ref) async {
 
   try {
     if (activeProfile.type == ProfileType.xtreamCodes) {
-      if (activeProfile.xcUrl != null && activeProfile.xcUsername != null && activeProfile.xcPassword != null) {
-        // Fix para lo1.in y otros servidores: Forzar HTTP porque HTTPS devuelve 404 o vacÃ­o para el XMLTV
-        String xcUrl = activeProfile.xcUrl!;
-        if (xcUrl.startsWith('https://')) {
-          xcUrl = xcUrl.replaceFirst('https://', 'http://');
-        }
-        final epgUrl = '$xcUrl/xmltv.php?username=${activeProfile.xcUsername}&password=${activeProfile.xcPassword}';
+      if (activeProfile.xcUrl != null &&
+          activeProfile.xcUsername != null &&
+          activeProfile.xcPassword != null) {
+        final base = activeProfile.xcUrl!.replaceFirst(RegExp(r'/+$'), '');
+        final epgUrl = Uri.parse('$base/xmltv.php')
+            .replace(
+              queryParameters: {
+                'username': activeProfile.xcUsername!,
+                'password': activeProfile.xcPassword!,
+              },
+            )
+            .toString();
         final parser = XmltvParser();
         return await parser.fetchAndParse(epgUrl);
       }
@@ -31,8 +37,8 @@ final epgProvider = FutureProvider<Map<String, List<EpgProgram>>>((ref) async {
       }
     }
   } catch (e) {
-    print('Error loading EPG: $e');
+    debugPrint('EPG unavailable.');
   }
-  
+
   return {};
 });

@@ -1,4 +1,4 @@
-﻿import 'package:isar/isar.dart';
+import 'package:isar/isar.dart';
 
 part 'favorite_channel.g.dart';
 
@@ -10,7 +10,7 @@ class FavoriteChannel {
   late String cleanName;
 
   late DateTime addedAt;
-  
+
   String category = 'General';
 
   String? preferredUrl;

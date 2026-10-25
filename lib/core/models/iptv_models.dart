@@ -4,6 +4,7 @@ class Channel {
   final String group;
   final String logo;
   final String tvgId; // Para emparejar con el EPG
+  final bool isLive;
 
   Channel({
     required this.name,
@@ -11,6 +12,7 @@ class Channel {
     this.group = '',
     this.logo = '',
     this.tvgId = '',
+    this.isLive = true,
   });
 
   Channel copyWith({
@@ -19,6 +21,7 @@ class Channel {
     String? group,
     String? logo,
     String? tvgId,
+    bool? isLive,
   }) {
     return Channel(
       name: name ?? this.name,
@@ -26,6 +29,7 @@ class Channel {
       group: group ?? this.group,
       logo: logo ?? this.logo,
       tvgId: tvgId ?? this.tvgId,
+      isLive: isLive ?? this.isLive,
     );
   }
 }
@@ -49,10 +53,10 @@ class EpgProgram {
     final now = DateTime.now();
     if (now.isBefore(start)) return 0.0;
     if (now.isAfter(end)) return 1.0;
-    
+
     final total = end.difference(start).inSeconds;
     final current = now.difference(start).inSeconds;
-    
+
     if (total <= 0) return 0.0;
     return current / total;
   }
@@ -77,4 +81,3 @@ class VodItem {
     this.rating = 0.0,
   });
 }
-

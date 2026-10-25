@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,372 +9,386 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../core/models/iptv_models.dart';
-import '../channels/widgets/iptv_image.dart';
+import '../../core/utils/device_capabilities.dart';
+import '../../core/widgets/remote_action.dart';
 import '../iptv_parser/providers/iptv_provider.dart';
-import '../iptv_parser/providers/logo_provider.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
-  final Channel? channel;
-
   const PlayerScreen({super.key, required this.channel});
-
+  final Channel? channel;
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
-  late final Player player;
-  late final VideoController controller;
-  
-  bool _showOverlay = true;
-  Timer? _hideOverlayTimer;
-  bool _isPlaying = true;
-  bool _isFullScreen = false;
+  late final Player _player;
+  late final VideoController _video;
+  late Channel? _channel;
+  final _remoteFocus = FocusNode(debugLabel: 'player remote');
+  final _playFocus = FocusNode(debugLabel: 'play pause');
+  final _subscriptions = <StreamSubscription<dynamic>>[];
+  Timer? _hideTimer;
+  bool _showControls = true, _playing = true, _buffering = true;
+  String? _error;
+  Duration _position = Duration.zero, _duration = Duration.zero;
+  bool get _desktop =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
   @override
   void initState() {
     super.initState();
-    player = Player();
-    controller = VideoController(player);
-
-    if (Platform.isAndroid || Platform.isIOS) {
+    _channel = widget.channel;
+    _player = Player();
+    _video = VideoController(_player);
+    _subscriptions.addAll([
+      _player.stream.playing.listen((v) {
+        if (mounted) setState(() => _playing = v);
+      }),
+      _player.stream.buffering.listen((v) {
+        if (mounted) setState(() => _buffering = v);
+      }),
+      _player.stream.error.listen((_) {
+        if (mounted) {
+          setState(() {
+            _error = 'No se pudo reproducir este contenido.';
+            _showControls = true;
+          });
+        }
+      }),
+      _player.stream.position.listen((v) {
+        if (mounted && _showControls && _channel?.isLive == false) {
+          setState(() => _position = v);
+        }
+      }),
+      _player.stream.duration.listen((v) {
+        if (mounted) setState(() => _duration = v);
+      }),
+    ]);
+    if (_channel != null) {
+      _open(_channel!);
+    } else {
+      _error = 'Selecciona un contenido para reproducir.';
+      _buffering = false;
+    }
+    if (Platform.isAndroid) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
     }
-    
-    // Hide mouse cursor by default after a while
-    _startHideTimer();
+    _restartTimer();
+  }
 
-    if (widget.channel != null) {
-      player.open(Media(widget.channel!.url));
-      player.stream.playing.listen((playing) {
-        if (mounted) setState(() => _isPlaying = playing);
+  Future<void> _open(Channel channel) async {
+    if (mounted) {
+      setState(() {
+        _channel = channel;
+        _error = null;
+        _buffering = true;
+        _position = Duration.zero;
+        _duration = Duration.zero;
       });
+    }
+    try {
+      await _player.open(Media(channel.url));
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'No se pudo abrir el contenido.';
+          _buffering = false;
+        });
+      }
+    }
+  }
+
+  void _restartTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted && _error == null) _hide();
+    });
+  }
+
+  void _hide() {
+    _remoteFocus.requestFocus();
+    setState(() => _showControls = false);
+  }
+
+  void _show() {
+    if (!_showControls) setState(() => _showControls = true);
+    _restartTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _playFocus.requestFocus();
+    });
+  }
+
+  void _seek(int seconds) {
+    if (_channel?.isLive != false || _duration == Duration.zero) return;
+    final position = (_player.state.position.inSeconds + seconds).clamp(
+      0,
+      _duration.inSeconds,
+    );
+    _player.seek(Duration(seconds: position));
+    _restartTimer();
+  }
+
+  KeyEventResult _key(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final key = event.logicalKey;
+    _restartTimer();
+    if (key == LogicalKeyboardKey.mediaPlayPause ||
+        key == LogicalKeyboardKey.space) {
+      _player.playOrPause();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaPlay) {
+      _player.play();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaPause) {
+      _player.pause();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaFastForward) {
+      _seek(30);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.mediaRewind) {
+      _seek(-10);
+      return KeyEventResult.handled;
+    }
+    if (!_showControls) {
+      if (_channel?.isLive == false && key == LogicalKeyboardKey.arrowRight) {
+        _seek(10);
+        return KeyEventResult.handled;
+      }
+      if (_channel?.isLive == false && key == LogicalKeyboardKey.arrowLeft) {
+        _seek(-10);
+        return KeyEventResult.handled;
+      }
+      if ([
+        LogicalKeyboardKey.select,
+        LogicalKeyboardKey.enter,
+        LogicalKeyboardKey.arrowUp,
+        LogicalKeyboardKey.arrowDown,
+        LogicalKeyboardKey.arrowLeft,
+        LogicalKeyboardKey.arrowRight,
+      ].contains(key)) {
+        _show();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Future<void> _fullScreen() async {
+    if (_desktop) {
+      await windowManager.setFullScreen(!await windowManager.isFullScreen());
     }
   }
 
   @override
   void dispose() {
-    _hideOverlayTimer?.cancel();
-    player.dispose();
-    _restoreWindow();
-    
-    if (Platform.isAndroid || Platform.isIOS) {
+    _hideTimer?.cancel();
+    for (final subscription in _subscriptions) {
+      subscription.cancel();
+    }
+    _remoteFocus.dispose();
+    _playFocus.dispose();
+    _player.dispose();
+    if (_desktop) windowManager.setFullScreen(false);
+    if (Platform.isAndroid) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      windowManager.setFullScreen(false);
+      SystemChrome.setPreferredOrientations(
+        DeviceCapabilities.isTv
+            ? [
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ]
+            : [],
+      );
     }
     super.dispose();
   }
 
-  void _restoreWindow() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      if (await windowManager.isFullScreen()) {
-        await windowManager.setFullScreen(false);
-      }
-      if (await windowManager.isAlwaysOnTop()) {
-        await windowManager.setAlwaysOnTop(false);
-        await windowManager.setSize(const Size(1280, 720));
-        await windowManager.setAlignment(Alignment.center);
-      }
-    }
-  }
-
-  void _startHideTimer() {
-    _hideOverlayTimer?.cancel();
-    _hideOverlayTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _showOverlay = false);
-      }
-    });
-  }
-
-  void _onHover() {
-    if (!_showOverlay) {
-      setState(() => _showOverlay = true);
-    }
-    _startHideTimer();
-  }
-  
-  void _togglePlayPause() {
-    player.playOrPause();
-  }
-
-  void _toggleFullScreen() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      final isFull = await windowManager.isFullScreen();
-      await windowManager.setFullScreen(!isFull);
-      setState(() => _isFullScreen = !isFull);
-    }
-  }
-
-  void _togglePiP() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      final isAlwaysOnTop = await windowManager.isAlwaysOnTop();
-      if (isAlwaysOnTop) {
-        await windowManager.setAlwaysOnTop(false);
-        await windowManager.setSize(const Size(1280, 720));
-        await windowManager.setAlignment(Alignment.center);
-      } else {
-        if (_isFullScreen) {
-          await windowManager.setFullScreen(false);
-          setState(() => _isFullScreen = false);
-        }
-        await windowManager.setAlwaysOnTop(true);
-        await windowManager.setSize(const Size(400, 225));
-        await windowManager.setAlignment(Alignment.bottomRight);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final channelsAsync = ref.watch(channelsProvider);
-    final allChannels = channelsAsync.value ?? [];
-    final logoDb = ref.watch(logoDatabaseProvider).value ?? {};
-    final fallbackUrl = widget.channel != null ? getLogoFallback(widget.channel!.name, logoDb) : '';
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: MouseRegion(
-        onHover: (_) => _onHover(),
-        child: GestureDetector(
-          onTap: _onHover,
-          onDoubleTap: _toggleFullScreen,
-          child: Stack(
-            children: [
-              Center(
-                child: Video(
-                  controller: controller,
-                  controls: NoVideoControls, // Usamos nuestros propios controles
+    final channels = _channel?.isLive == true
+        ? ref.watch(channelsProvider).value ?? <Channel>[]
+        : <Channel>[];
+    return PopScope(
+      canPop: !_showControls,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _hide();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Focus(
+          focusNode: _remoteFocus,
+          autofocus: true,
+          onKeyEvent: _key,
+          child: GestureDetector(
+            onTap: _show,
+            onDoubleTap: _fullScreen,
+            behavior: HitTestBehavior.opaque,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Video(controller: _video, controls: NoVideoControls),
                 ),
-              ),
-              
-              // Custom Zen Player Overlay
-              IgnorePointer(
-                ignoring: !_showOverlay,
-                child: AnimatedOpacity(
-                  opacity: _showOverlay ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 300),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.7),
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.9),
-                        ],
-                        stops: const [0.0, 0.2, 0.7, 1.0],
-                      ),
+                if (_buffering && _error == null)
+                  const Center(child: CircularProgressIndicator()),
+                if (_error != null)
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, textAlign: TextAlign.center),
+                        if (_channel != null)
+                          TextButton(
+                            onPressed: () => _open(_channel!),
+                            child: const Text('Reintentar'),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-              IgnorePointer(
-                ignoring: !_showOverlay,
-                child: Stack(
-                  children: [
-                    // Top Bar
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOutCubic,
-                      top: _showOverlay ? 16 : -80,
-                      left: 16,
-                      right: 16,
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                            onPressed: () async {
-                              if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-                                if (await windowManager.isFullScreen()) {
-                                  await windowManager.setFullScreen(false);
-                                }
-                                if (await windowManager.isAlwaysOnTop()) {
-                                  await windowManager.setAlwaysOnTop(false);
-                                  await windowManager.setSize(const Size(1280, 720));
-                                  await windowManager.setAlignment(Alignment.center);
-                                }
-                              }
-                              if (mounted) {
-                                Navigator.of(context).pop();
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 16),
-                          if (widget.channel != null) ...[
-                            Text(
-                              widget.channel!.name,
-                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                          const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.picture_in_picture_alt, color: Colors.white),
-                            onPressed: _togglePiP,
-                          ),
-                          IconButton(
-                            icon: Icon(_isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen, color: Colors.white),
-                            onPressed: _toggleFullScreen,
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Center Play/Pause & Watermark
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _showOverlay ? 1.0 : 0.0,
-                      child: Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (widget.channel != null)
-                              Opacity(
-                                opacity: 0.5,
-                                child: IptvImage(
-                                  url: widget.channel!.logo,
-                                  fallbackUrl: fallbackUrl,
-                                  errorWidget: const Icon(Icons.tv, color: Colors.white, size: 48),
-                                  width: 120,
-                                  height: 120,
-                                ),
-                              ),
-                            const SizedBox(width: 24),
-                            GestureDetector(
-                              onTap: _togglePlayPause,
-                              child: Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _isPlaying ? Icons.pause : Icons.play_arrow,
-                                  color: Colors.white,
-                                  size: 48,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    // Bottom Area
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOutCubic,
-                      bottom: _showOverlay ? 0 : -200,
-                      left: 0,
-                      right: 0,
+                if (_showControls)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: const Color(0x66000000),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Quick Action Buttons
+                          Row(
+                            children: [
+                              IconButton(
+                                tooltip: 'Volver',
+                                icon: const Icon(Icons.arrow_back),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _channel?.name ?? 'Reproductor',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
+                              if (_desktop)
+                                IconButton(
+                                  tooltip: 'Pantalla completa',
+                                  icon: const Icon(Icons.fullscreen),
+                                  onPressed: _fullScreen,
+                                ),
+                            ],
+                          ),
+                          const Spacer(),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _buildQuickButton(Icons.closed_caption_outlined, 'Language and subtitles'),
-                              const SizedBox(width: 16),
-                              _buildQuickButton(Icons.bedtime_outlined, 'Sleep timer'),
+                              if (_channel?.isLive == false)
+                                IconButton(
+                                  tooltip: 'Retroceder 10 segundos',
+                                  iconSize: 40,
+                                  icon: const Icon(Icons.replay_10),
+                                  onPressed: () => _seek(-10),
+                                ),
+                              IconButton(
+                                focusNode: _playFocus,
+                                autofocus: true,
+                                tooltip: _playing ? 'Pausar' : 'Reproducir',
+                                iconSize: 64,
+                                icon: Icon(
+                                  _playing
+                                      ? Icons.pause_circle
+                                      : Icons.play_circle,
+                                ),
+                                onPressed: () {
+                                  _player.playOrPause();
+                                  _restartTimer();
+                                },
+                              ),
+                              if (_channel?.isLive == false)
+                                IconButton(
+                                  tooltip: 'Avanzar 10 segundos',
+                                  iconSize: 40,
+                                  icon: const Icon(Icons.forward_10),
+                                  onPressed: () => _seek(10),
+                                ),
                             ],
                           ),
-                          const SizedBox(height: 24),
-                          
-                          // Channel List
-                          SizedBox(
-                            height: 100,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: allChannels.length > 50 ? 50 : allChannels.length, // Limit for performance if needed
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
-                              itemBuilder: (context, index) {
-                                final ch = allChannels[index];
-                                // Skip separators
-                                if (ch.name.startsWith('+') || ch.name.startsWith('-') || ch.name.startsWith('=')) return const SizedBox();
-                                
-                                bool isCurrent = widget.channel?.name == ch.name;
-                                return _buildBottomChannelCard(ch, isCurrent, logoDb);
-                              },
+                          const Spacer(),
+                          if (_channel?.isLive == false &&
+                              _duration.inSeconds > 0)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(_time(_position)),
+                                  Expanded(
+                                    child: Slider(
+                                      value: _position.inSeconds
+                                          .clamp(0, _duration.inSeconds)
+                                          .toDouble(),
+                                      max: _duration.inSeconds.toDouble(),
+                                      onChanged: (value) {
+                                        _player.seek(
+                                          Duration(seconds: value.toInt()),
+                                        );
+                                        _restartTimer();
+                                      },
+                                    ),
+                                  ),
+                                  Text(_time(_duration)),
+                                ],
+                              ),
                             ),
-                          ),
+                          if (channels.isNotEmpty)
+                            SizedBox(
+                              height: 76,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: channels.length,
+                                itemExtent: 168,
+                                itemBuilder: (context, index) => Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: RemoteAction(
+                                    onTap: () {
+                                      _open(channels[index]);
+                                      _restartTimer();
+                                    },
+                                    child: Card(
+                                      child: Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Text(
+                                            channels[index].name,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 16),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildQuickButton(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomChannelCard(Channel ch, bool isCurrent, Map<String, String> logoDb) {
-    final fallbackUrl = getLogoFallback(ch.name, logoDb);
-    
-    return GestureDetector(
-      onTap: () {
-        player.open(Media(ch.url));
-        // We could also pushReplacement if we want to change the channel entirely in the route
-      },
-      child: Container(
-        width: 140,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          color: isCurrent ? const Color(0xFF2C3144) : const Color(0xFF141624).withOpacity(0.8),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isCurrent ? const Color(0xFF6B4EE6) : Colors.transparent, width: 2),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IptvImage(url: ch.logo, fallbackUrl: fallbackUrl, errorWidget: const Icon(Icons.tv, color: Colors.white, size: 24), width: 60, height: 40),
-            const SizedBox(height: 8),
-            Text(
-              ch.name,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  String _time(Duration value) =>
+      '${value.inMinutes}:${(value.inSeconds % 60).toString().padLeft(2, '0')}';
 }

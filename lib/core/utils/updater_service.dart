@@ -1,186 +1,114 @@
 import 'dart:io';
-import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'device_capabilities.dart';
+import 'update_download.dart';
 
 class UpdaterService {
+  static bool _checked = false;
+
   static Future<void> checkForUpdates(BuildContext context) async {
+    if (_checked) return;
+    _checked = true;
     try {
       final response = await Supabase.instance.client
           .from('app_settings')
-          .select('latest_version, apk_url, windows_exe_url, release_notes')
-          .maybeSingle();
-
+          .select()
+          .eq('id', 1)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 8));
       if (response == null) return;
-
-      final latestVersion = response['latest_version'] as String;
-      final apkUrl = response['apk_url'] as String;
-      final windowsExeUrl = response['windows_exe_url'] as String?;
-      final releaseNotes = response['release_notes'] as String?;
-
-      final updateUrl = Platform.isWindows ? windowsExeUrl : apkUrl;
-
-      if (updateUrl == null || updateUrl.isEmpty) return;
-
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
-
-      if (_isNewer(currentVersion, latestVersion)) {
-        if (context.mounted) {
-          _showUpdateDialog(context, latestVersion, updateUrl, releaseNotes ?? 'A new version is available.');
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('OTA Check Error: $e'), backgroundColor: Colors.red));
-      }
-      print('Failed to check for updates: $e');
+      final current = await PackageInfo.fromPlatform();
+      final latest = response['latest_version'] as String?;
+      if (latest == null || !isNewerVersion(current.version, latest)) return;
+      final abi = DeviceCapabilities.primaryAbi;
+      final urls = response['apk_urls'] as Map<String, dynamic>?;
+      final hashes = response['apk_sha256s'] as Map<String, dynamic>?;
+      final url = Platform.isWindows
+          ? response['windows_exe_url']
+          : urls?[abi] ?? response['apk_url'];
+      final hash = Platform.isWindows
+          ? response['windows_sha256']
+          : hashes?[abi] ?? response['apk_sha256'];
+      if (url is! String || hash is! String || !context.mounted) return;
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Actualización $latest'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: Text(
+              response['release_notes']?.toString() ??
+                  'Hay una nueva versión disponible.',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Más tarde'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Actualizar'),
+            ),
+          ],
+        ),
+      );
+      if (accepted != true || !context.mounted) return;
+      await _install(context, url, hash);
+    } catch (_) {
+      // Offline operation should never interrupt channel browsing.
+      debugPrint('Update service unavailable.');
     }
   }
 
-  static bool _isNewer(String current, String latest) {
-    try {
-      current = current.split('+')[0];
-      latest = latest.split('+')[0];
-      List<int> currParts = current.split('.').map(int.parse).toList();
-      List<int> latestParts = latest.split('.').map(int.parse).toList();
-
-      for (int i = 0; i < 3; i++) {
-        int c = i < currParts.length ? currParts[i] : 0;
-        int l = i < latestParts.length ? latestParts[i] : 0;
-        if (l > c) return true;
-        if (l < c) return false;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  static void _showUpdateDialog(BuildContext context, String version, String apkUrl, String notes) {
-    showDialog(
+  static Future<void> _install(
+    BuildContext context,
+    String url,
+    String hash,
+  ) async {
+    final progress = DialogRoute<void>(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.5),
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 450),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Update Available ($version)', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    Text(notes.replaceAll('\\n', '\n'), style: const TextStyle(color: Colors.white70, fontSize: 14)),
-                    const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Later', style: TextStyle(color: Colors.white54)),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.1),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _downloadAndInstall(context, apkUrl);
-                          },
-                          child: const Text('Update Now'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 24),
+            Expanded(child: Text('Descargando actualización…')),
+          ],
         ),
       ),
     );
-  }
-
-  static Future<void> _downloadAndInstall(BuildContext context, String url) async {
-    // Show downloading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.5),
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-              ),
-              padding: const EdgeInsets.all(32),
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: Colors.white),
-                  SizedBox(height: 24),
-                  Text('Downloading update...', style: TextStyle(color: Colors.white, fontSize: 16)),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
+    final navigator = Navigator.of(context);
+    navigator.push(progress);
     try {
-      final response = await http.get(Uri.parse(url));
-      final dir = await getTemporaryDirectory();
-      
-      final fileName = Platform.isWindows ? 'update.exe' : 'update.apk';
-      final file = File('${dir.path}/$fileName');
-      
-      await file.writeAsBytes(response.bodyBytes);
-
-      if (context.mounted) {
-        Navigator.pop(context); // Close downloading dialog
+      final directory = await getTemporaryDirectory();
+      final file = await downloadUpdate(
+        Uri.parse(url),
+        File(
+          '${directory.path}/apex-update.${Platform.isWindows ? "exe" : "apk"}',
+        ),
+        hash,
+      );
+      if (progress.isActive) navigator.removeRoute(progress);
+      final result = await OpenFilex.open(file.path);
+      if (result.type != ResultType.done) {
+        throw StateError('No se pudo abrir el instalador.');
       }
-
-      // Trigger APK or EXE installation
-      await OpenFilex.open(file.path);
-      
-      if (Platform.isWindows) {
-        exit(0);
-      }
-    } catch (e) {
+      if (Platform.isWindows) exit(0);
+    } catch (_) {
+      if (progress.isActive) navigator.removeRoute(progress);
       if (context.mounted) {
-        Navigator.pop(context); // Close dialog
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to download update: $e')),
+          const SnackBar(
+            content: Text('No se pudo verificar o instalar la actualización.'),
+          ),
         );
       }
     }

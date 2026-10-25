@@ -1,5 +1,7 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+
 import '../../../core/utils/image_cache_service.dart';
 
 class IptvImage extends StatefulWidget {
@@ -37,20 +39,25 @@ class _IptvImageState extends State<IptvImage> {
   @override
   void didUpdateWidget(IptvImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url || oldWidget.fallbackUrl != widget.fallbackUrl) {
+    if (oldWidget.url != widget.url ||
+        oldWidget.fallbackUrl != widget.fallbackUrl) {
       _loadImage();
     }
   }
 
   Future<void> _loadImage() async {
     final currentLoadId = ++_loadId;
-    
+
     if (mounted) {
-      setState(() { _isLoading = true; _isError = false; _imageFile = null; });
+      setState(() {
+        _isLoading = true;
+        _isError = false;
+        _imageFile = null;
+      });
     }
 
     File? file;
-    
+
     // Check cache first quickly
     if (widget.fallbackUrl.isNotEmpty) {
       file = await ImageCacheService.getCachedFile(widget.fallbackUrl);
@@ -62,20 +69,32 @@ class _IptvImageState extends State<IptvImage> {
     // If not cached, download it
     if (file == null) {
       if (widget.fallbackUrl.isNotEmpty) {
-        file = await ImageCacheService.downloadFile(widget.fallbackUrl, useVlc: false);
-        file ??= await ImageCacheService.downloadFile(widget.fallbackUrl, useVlc: true);
+        file = await ImageCacheService.downloadFile(
+          widget.fallbackUrl,
+          useVlc: false,
+        );
+        file ??= await ImageCacheService.downloadFile(
+          widget.fallbackUrl,
+          useVlc: true,
+        );
       }
       if (file == null && widget.url.isNotEmpty) {
         file = await ImageCacheService.downloadFile(widget.url, useVlc: false);
         file ??= await ImageCacheService.downloadFile(widget.url, useVlc: true);
       }
     }
-    
+
     if (mounted && _loadId == currentLoadId) {
       if (file != null) {
-        setState(() { _imageFile = file; _isLoading = false; });
+        setState(() {
+          _imageFile = file;
+          _isLoading = false;
+        });
       } else {
-        setState(() { _isError = true; _isLoading = false; });
+        setState(() {
+          _isError = true;
+          _isLoading = false;
+        });
       }
     }
   }
@@ -86,7 +105,9 @@ class _IptvImageState extends State<IptvImage> {
       return SizedBox(
         width: widget.width,
         height: widget.height,
-        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        child: const Center(
+          child: Icon(Icons.tv_outlined, color: Colors.white12),
+        ),
       );
     }
 
@@ -94,7 +115,9 @@ class _IptvImageState extends State<IptvImage> {
       return SizedBox(
         width: widget.width,
         height: widget.height,
-        child: widget.errorWidget ?? const Icon(Icons.tv, color: Colors.white24, size: 24),
+        child:
+            widget.errorWidget ??
+            const Icon(Icons.tv, color: Colors.white24, size: 24),
       );
     }
 
@@ -103,6 +126,10 @@ class _IptvImageState extends State<IptvImage> {
       width: widget.width,
       height: widget.height,
       fit: BoxFit.contain,
+      cacheWidth: 320,
+      filterQuality: FilterQuality.low,
+      errorBuilder: (_, _, _) =>
+          widget.errorWidget ?? const Icon(Icons.broken_image_outlined),
     );
   }
 }

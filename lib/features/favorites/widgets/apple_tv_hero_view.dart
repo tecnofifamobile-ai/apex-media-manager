@@ -1,5 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import '../../../core/widgets/remote_action.dart';
+
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/models/iptv_models.dart';
 import '../utils/wallpaper_mapper.dart';
 import '../../channels/widgets/iptv_image.dart';
@@ -9,7 +12,11 @@ class AppleTvHeroView extends StatefulWidget {
   final List<Channel> favoriteChannels;
   final Map<String, String> logoDb;
 
-  const AppleTvHeroView({super.key, required this.favoriteChannels, required this.logoDb});
+  const AppleTvHeroView({
+    super.key,
+    required this.favoriteChannels,
+    required this.logoDb,
+  });
 
   @override
   State<AppleTvHeroView> createState() => _AppleTvHeroViewState();
@@ -22,25 +29,42 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
   void initState() {
     super.initState();
     if (widget.favoriteChannels.isNotEmpty) {
-      _hoveredCleanName = widget.favoriteChannels.first.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      _hoveredCleanName = widget.favoriteChannels.first.name
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '');
     }
   }
 
   @override
   void didUpdateWidget(AppleTvHeroView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.favoriteChannels.isNotEmpty && !widget.favoriteChannels.any((c) => c.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '') == _hoveredCleanName)) {
-      _hoveredCleanName = widget.favoriteChannels.first.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    if (widget.favoriteChannels.isNotEmpty &&
+        !widget.favoriteChannels.any(
+          (c) =>
+              c.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '') ==
+              _hoveredCleanName,
+        )) {
+      _hoveredCleanName = widget.favoriteChannels.first.name
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]'), '');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.favoriteChannels.isEmpty) {
-      return const Center(child: Text('Aún no tienes canales favoritos', style: TextStyle(color: Colors.white70)));
+      return const Center(
+        child: Text(
+          'Aún no tienes canales favoritos',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
     }
 
-    final String wallpaperUrl = WallpaperMapper.getHeroWallpaper(_hoveredCleanName, null);
+    final String wallpaperUrl = WallpaperMapper.getHeroWallpaper(
+      _hoveredCleanName,
+      null,
+    );
 
     return Stack(
       children: [
@@ -55,17 +79,17 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
             ),
           ),
         ),
-        
+
         // Gradient Shadow
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF0D0F16).withOpacity(0.95),
-                  const Color(0xFF0D0F16).withOpacity(0.4),
+                  const Color(0xFF0D0F16).withValues(alpha: 0.95),
+                  const Color(0xFF0D0F16).withValues(alpha: 0.4),
                   Colors.transparent,
-                  const Color(0xFF0D0F16).withOpacity(0.9),
+                  const Color(0xFF0D0F16).withValues(alpha: 0.9),
                 ],
                 stops: const [0.0, 0.2, 0.6, 1.0],
                 begin: Alignment.centerLeft,
@@ -86,13 +110,16 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
             itemCount: widget.favoriteChannels.length,
             itemBuilder: (context, index) {
               final channel = widget.favoriteChannels[index];
-              final cleanName = channel.name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+              final cleanName = channel.name.toLowerCase().replaceAll(
+                RegExp(r'[^a-z0-9]'),
+                '',
+              );
               final isHovered = _hoveredCleanName == cleanName;
               String fallback = getLogoFallback(channel.name, widget.logoDb);
 
               return MouseRegion(
                 onEnter: (_) => setState(() => _hoveredCleanName = cleanName),
-                child: GestureDetector(
+                child: RemoteAction(
                   onTap: () {
                     context.pushNamed('player', extra: channel);
                   },
@@ -104,7 +131,7 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
                     height: isHovered ? 180 : 150,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      color: const Color(0xFF1E2132).withOpacity(0.9),
+                      color: const Color(0xFF1E2132).withValues(alpha: 0.9),
                       border: Border.all(
                         color: isHovered ? Colors.white : Colors.transparent,
                         width: 2,
@@ -112,10 +139,10 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
                       boxShadow: isHovered
                           ? [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
-                              )
+                              ),
                             ]
                           : [],
                     ),
@@ -143,21 +170,29 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                                borderRadius: const BorderRadius.vertical(
+                                  bottom: Radius.circular(14),
+                                ),
                                 gradient: LinearGradient(
-                                  colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.8),
+                                    Colors.transparent,
+                                  ],
                                   begin: Alignment.bottomCenter,
                                   end: Alignment.topCenter,
                                 ),
                               ),
                               child: Text(
                                 channel.name,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          )
+                          ),
                       ],
                     ),
                   ),
@@ -170,4 +205,3 @@ class _AppleTvHeroViewState extends State<AppleTvHeroView> {
     );
   }
 }
-

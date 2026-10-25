@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 class TmdbClient {
@@ -7,10 +8,15 @@ class TmdbClient {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
   /// Busca una película por nombre y devuelve la URL del póster en alta calidad y la sinopsis
-  static Future<Map<String, String>?> searchMovie(String title, {String language = 'es-ES'}) async {
+  static Future<Map<String, String>?> searchMovie(
+    String title, {
+    String language = 'es-ES',
+  }) async {
     if (_apiKey.isEmpty) return null;
-    final uri = Uri.parse('$_baseUrl/search/movie?api_key=$_apiKey&query=${Uri.encodeComponent(title)}&language=$language');
-    
+    final uri = Uri.parse(
+      '$_baseUrl/search/movie?api_key=$_apiKey&query=${Uri.encodeComponent(title)}&language=$language',
+    );
+
     try {
       final response = await http.get(uri);
       if (response.statusCode == 200) {
@@ -20,8 +26,12 @@ class TmdbClient {
           return {
             'title': result['title']?.toString() ?? title,
             'overview': result['overview']?.toString() ?? '',
-            'poster_url': result['poster_path'] != null ? '$_imageBaseUrl${result['poster_path']}' : '',
-            'backdrop_url': result['backdrop_path'] != null ? '$_imageBaseUrl${result['backdrop_path']}' : '',
+            'poster_url': result['poster_path'] != null
+                ? '$_imageBaseUrl${result['poster_path']}'
+                : '',
+            'backdrop_url': result['backdrop_path'] != null
+                ? '$_imageBaseUrl${result['backdrop_path']}'
+                : '',
           };
         }
       }

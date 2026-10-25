@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../features/iptv_parser/providers/logo_provider.dart';
 import '../../features/iptv_parser/providers/category_provider.dart';
 import '../../features/vpn/vpn_provider.dart';
+import '../auth/local_mode_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -13,7 +15,8 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends ConsumerState<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   bool _initialized = false;
@@ -25,9 +28,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     _controller.forward();
   }
@@ -48,11 +52,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       _initialized = true;
       // Trigger VPN auto-start if enabled in settings
       ref.read(vpnEnabledProvider);
-      
-      Future.delayed(const Duration(milliseconds: 2500), () {
+
+      Future.delayed(Duration.zero, () {
         if (!mounted) return;
         final session = Supabase.instance.client.auth.currentSession;
-        if (session != null) {
+        if (session != null || ref.read(localModeProvider)) {
           context.go('/profile');
         } else {
           context.go('/auth');
@@ -70,7 +74,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       if (next.hasValue) _checkInitialization();
     });
 
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkInitialization();
     });
@@ -106,7 +109,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
               Text(
                 'Iniciando sistema...',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 14,
                   letterSpacing: 1.2,
                 ),

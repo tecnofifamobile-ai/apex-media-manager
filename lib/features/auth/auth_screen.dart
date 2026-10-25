@@ -1,8 +1,12 @@
-import 'dart:ui';
+import '../../core/widgets/remote_text_field.dart';
+import '../../core/widgets/remote_action.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'local_mode_provider.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -16,7 +20,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _usernameController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isLogin = true;
 
@@ -42,8 +46,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         );
       } else {
         final confirmPassword = _confirmPasswordController.text;
-        if (password != confirmPassword) throw Exception("Passwords do not match");
-        if (_usernameController.text.trim().isEmpty) throw Exception("Username is required");
+        if (password != confirmPassword) {
+          throw Exception("Passwords do not match");
+        }
+        if (_usernameController.text.trim().isEmpty) {
+          throw Exception("Username is required");
+        }
 
         await Supabase.instance.client.auth.signUp(
           email: email,
@@ -51,7 +59,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           data: {'username': _usernameController.text.trim()},
         );
       }
-      
+
       if (mounted) {
         context.go('/profile');
       }
@@ -59,10 +67,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', ''), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: Text(
+              e.toString().replaceAll('Exception: ', ''),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
       }
@@ -79,20 +95,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF090A0F),
-      body: isWideScreen 
-        ? Row(
-            children: [
-              Expanded(
-                flex: 5,
-                child: _buildBrandingSide(),
-              ),
-              Expanded(
-                flex: 4,
-                child: _buildFormSide(isWideScreen: true),
-              ),
-            ],
-          )
-        : Center(child: _buildFormSide(isWideScreen: false)),
+      body: isWideScreen
+          ? Row(
+              children: [
+                Expanded(flex: 5, child: _buildBrandingSide()),
+                Expanded(flex: 4, child: _buildFormSide(isWideScreen: true)),
+              ],
+            )
+          : Center(child: _buildFormSide(isWideScreen: false)),
     );
   }
 
@@ -100,14 +110,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'),
+          image: NetworkImage(
+            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop',
+          ),
           fit: BoxFit.cover,
         ),
       ),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [const Color(0xFF090A0F).withOpacity(0.9), const Color(0xFF090A0F).withOpacity(0.3)],
+            colors: [
+              const Color(0xFF090A0F).withValues(alpha: 0.9),
+              const Color(0xFF090A0F).withValues(alpha: 0.3),
+            ],
             begin: Alignment.centerRight,
             end: Alignment.centerLeft,
           ),
@@ -124,12 +139,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             const SizedBox(height: 24),
             const Text(
               'APEX Media Manager',
-              style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -1),
+              style: TextStyle(
+                fontSize: 40,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: -1,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               'All your media, perfectly synchronized across your devices.',
-              style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.7), height: 1.5),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white.withValues(alpha: 0.7),
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -157,33 +181,60 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ],
                   Text(
                     _isLogin ? 'Welcome back' : 'Join ESPTV',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _isLogin ? 'Enter your details to access your profiles.' : 'Create an account to sync your playlists.',
-                    style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.5)),
+                    _isLogin
+                        ? 'Enter your details to access your profiles.'
+                        : 'Create an account to sync your playlists.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
                   ),
                   const SizedBox(height: 40),
 
                   if (!_isLogin) ...[
-                    _buildTextField(controller: _usernameController, hint: 'Username', icon: Icons.person_outline),
+                    _buildTextField(
+                      controller: _usernameController,
+                      hint: 'Username',
+                      icon: Icons.person_outline,
+                    ),
                     const SizedBox(height: 16),
                   ],
-                  
-                  _buildTextField(controller: _emailController, hint: 'Email', icon: Icons.email_outlined),
+
+                  _buildTextField(
+                    controller: _emailController,
+                    hint: 'Email',
+                    icon: Icons.email_outlined,
+                  ),
                   const SizedBox(height: 16),
-                  
-                  _buildTextField(controller: _passwordController, hint: 'Password', icon: Icons.lock_outline, obscure: true),
+
+                  _buildTextField(
+                    controller: _passwordController,
+                    hint: 'Password',
+                    icon: Icons.lock_outline,
+                    obscure: true,
+                  ),
                   const SizedBox(height: 16),
 
                   if (!_isLogin) ...[
-                    _buildTextField(controller: _confirmPasswordController, hint: 'Repeat Password', icon: Icons.lock_reset, obscure: true),
+                    _buildTextField(
+                      controller: _confirmPasswordController,
+                      hint: 'Repeat Password',
+                      icon: Icons.lock_reset,
+                      obscure: true,
+                    ),
                     const SizedBox(height: 16),
                   ],
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   SizedBox(
                     height: 54,
                     child: ElevatedButton(
@@ -191,24 +242,51 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         elevation: 0,
                       ),
-                      child: _isLoading 
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-                        : Text(_isLogin ? 'Sign In' : 'Join APEX', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.black,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              _isLogin ? 'Sign In' : 'Join APEX',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
+                  TextButton.icon(
+                    icon: const Icon(Icons.offline_bolt_outlined),
+                    label: const Text('Continuar en este dispositivo'),
+                    onPressed: () async {
+                      await ref.read(localModeProvider.notifier).enable();
+                      if (mounted) context.go('/profile');
+                    },
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _isLogin ? "Don't have an account? " : "Already have an account? ",
-                        style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                        _isLogin
+                            ? "Don't have an account? "
+                            : "Already have an account? ",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
                       ),
-                      GestureDetector(
+                      RemoteAction(
                         onTap: () {
                           setState(() {
                             _isLogin = !_isLogin;
@@ -219,7 +297,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         },
                         child: Text(
                           _isLogin ? 'Join APEX' : 'Sign In',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -233,24 +314,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     );
   }
 
-  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon, bool obscure = false}) {
-    return TextField(
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool obscure = false,
+  }) {
+    return RemoteTextField(
       controller: controller,
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         filled: true,
-        fillColor: Colors.white.withOpacity(0.03),
+        fillColor: Colors.white.withValues(alpha: 0.03),
         prefixIcon: Icon(icon, color: Colors.white38),
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white24),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

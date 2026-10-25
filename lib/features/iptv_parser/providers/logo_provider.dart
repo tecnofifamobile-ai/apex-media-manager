@@ -1,4 +1,3 @@
-import '../../../core/utils/image_cache_service.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -10,8 +9,13 @@ String _normalizeName(String n) {
 
   // Remove accents using safe unicode escapes
   final Map<String, String> diacriticMap = {
-    '\u00e1': 'a', '\u00e9': 'e', '\u00ed': 'i', '\u00f3': 'o', '\u00fa': 'u',
-    '\u00fc': 'u', '\u00f1': 'n',
+    '\u00e1': 'a',
+    '\u00e9': 'e',
+    '\u00ed': 'i',
+    '\u00f3': 'o',
+    '\u00fa': 'u',
+    '\u00fc': 'u',
+    '\u00f1': 'n',
   };
   diacriticMap.forEach((from, to) {
     n = n.replaceAll(from, to);
@@ -29,9 +33,12 @@ String _normalizeName(String n) {
 
   n = n.replaceAll('espana', '');
   n = n.replaceAll('espaa', '');
-  
-  n = n.replaceAll(RegExp(r'\b(fhd|hd|sd|4k|hevc|hdr|uhd|h265|vip|premium|1080p|720p|tv)\b'), '');
-  
+
+  n = n.replaceAll(
+    RegExp(r'\b(fhd|hd|sd|4k|hevc|hdr|uhd|h265|vip|premium|1080p|720p|tv)\b'),
+    '',
+  );
+
   // Remove all non-alphanumeric characters
   n = n.replaceAll(RegExp(r'[^a-z0-9]'), '');
 
@@ -41,6 +48,8 @@ String _normalizeName(String n) {
 final Map<String, String> _logoCache = {};
 
 String getLogoFallback(String originalName, Map<String, String> database) {
+  if (database.isEmpty) return "";
+  if (_logoCache.length > 4096) _logoCache.clear();
   if (_logoCache.containsKey(originalName)) {
     return _logoCache[originalName]!;
   }
@@ -49,29 +58,73 @@ String getLogoFallback(String originalName, Map<String, String> database) {
 
   // Aliases for missing logos
   if (normalized.startsWith('daznlaliga')) normalized = 'daznlaliga';
-  if (normalized.startsWith('ligadecampeones1') && normalized.length == 16) normalized = 'ligadecampeones';
-  if (normalized == 'ligadecampeones18' || normalized == 'ligadecampeones19') normalized = 'ligadecampeones';
+  if (normalized.startsWith('ligadecampeones1') && normalized.length == 16) {
+    normalized = 'ligadecampeones';
+  }
+  if (normalized == 'ligadecampeones18' || normalized == 'ligadecampeones19') {
+    normalized = 'ligadecampeones';
+  }
   if (normalized.startsWith('daznbaloncesto')) normalized = 'daznacb';
   if (normalized.contains('acb')) normalized = 'daznacb';
   if (normalized.startsWith('daznacb')) normalized = 'daznacb';
   if (normalized.contains('motogp')) normalized = 'daznmotogp';
-  if (normalized.contains('formula1') || normalized.contains('f1')) normalized = 'daznf1';
-  if (normalized.contains('daznevents') || normalized.contains('eventos')) normalized = 'dazn';
+  if (normalized.contains('formula1') || normalized.contains('f1')) {
+    normalized = 'daznf1';
+  }
+  if (normalized.contains('daznevents') || normalized.contains('eventos')) {
+    normalized = 'dazn';
+  }
   if (normalized.contains('dazn1')) normalized = 'dazn1';
   if (normalized.contains('dazn2')) normalized = 'dazn2';
   if (normalized.contains('dazn3')) normalized = 'dazn3';
   if (normalized.contains('dazn4')) normalized = 'dazn4';
-  if (normalized == 'mcine' || normalized == 'cine' || normalized.contains('cine')) normalized = 'cine';
-  if (normalized == 'maccion' || normalized == 'accion' || normalized.contains('accion')) normalized = 'accion';
-  if (normalized == 'mcomedia' || normalized == 'comedia' || normalized.contains('comedia')) normalized = 'comedia';
-  if (normalized == 'mdrama' || normalized == 'drama' || normalized.contains('drama')) normalized = 'drama';
-  if (normalized == 'mseries' || normalized == 'series' || normalized.contains('series')) normalized = 'series';
-  if (normalized == 'mfest' || normalized == 'fest' || normalized.contains('fest')) normalized = 'musica';
-  if (normalized == 'mindie' || normalized == 'indie' || normalized.contains('indie')) normalized = 'indie';
-  if (normalized == 'mclasicos' || normalized == 'clasicos' || normalized.contains('clasicos')) normalized = 'clasicos';
-  if (normalized.contains('estrenos')) normalized = 'originales'; // Fallback for estrenos
-  if (normalized.contains('daznlaliga1') || normalized == 'daznlaliga') normalized = 'daznlaliga';
-  
+  if (normalized == 'mcine' ||
+      normalized == 'cine' ||
+      normalized.contains('cine')) {
+    normalized = 'cine';
+  }
+  if (normalized == 'maccion' ||
+      normalized == 'accion' ||
+      normalized.contains('accion')) {
+    normalized = 'accion';
+  }
+  if (normalized == 'mcomedia' ||
+      normalized == 'comedia' ||
+      normalized.contains('comedia')) {
+    normalized = 'comedia';
+  }
+  if (normalized == 'mdrama' ||
+      normalized == 'drama' ||
+      normalized.contains('drama')) {
+    normalized = 'drama';
+  }
+  if (normalized == 'mseries' ||
+      normalized == 'series' ||
+      normalized.contains('series')) {
+    normalized = 'series';
+  }
+  if (normalized == 'mfest' ||
+      normalized == 'fest' ||
+      normalized.contains('fest')) {
+    normalized = 'musica';
+  }
+  if (normalized == 'mindie' ||
+      normalized == 'indie' ||
+      normalized.contains('indie')) {
+    normalized = 'indie';
+  }
+  if (normalized == 'mclasicos' ||
+      normalized == 'clasicos' ||
+      normalized.contains('clasicos')) {
+    normalized = 'clasicos';
+  }
+  if (normalized.contains('estrenos')) {
+    normalized = 'originales'; // Fallback for estrenos
+  }
+  if (normalized.contains('daznlaliga1') || normalized == 'daznlaliga') {
+    normalized = 'daznlaliga';
+  }
+
   if (database.containsKey(normalized)) {
     _logoCache[originalName] = database[normalized]!;
     return _logoCache[originalName]!;
@@ -91,20 +144,16 @@ Future<Map<String, String>> _parseLogosInBackground(String jsonStr) async {
     final fileName = pathStr.split('/').last.replaceAll('.png', '');
 
     String n = fileName.toLowerCase();
-    if (n.endsWith('-es'))
-      n = n.substring(0, n.length - 3);
-    else if (n.endsWith('-uk'))
-      n = n.substring(0, n.length - 3);
-    else if (n.endsWith('-us'))
-      n = n.substring(0, n.length - 3);
-    else if (n.endsWith('-de'))
-      n = n.substring(0, n.length - 3);
-    else if (n.endsWith('-fr'))
-      n = n.substring(0, n.length - 3);
+    for (final suffix in ['-es', '-uk', '-us', '-de', '-fr']) {
+      if (n.endsWith(suffix)) {
+        n = n.substring(0, n.length - suffix.length);
+        break;
+      }
+    }
 
     final normalized = _normalizeName(n);
     final rawUrl =
-        'https://raw.githubusercontent.com/tv-logo/tv-logos/main/${pathStr}';
+        'https://raw.githubusercontent.com/tv-logo/tv-logos/main/$pathStr';
 
     if (!logoMap.containsKey(normalized) || pathStr.contains('/spain/')) {
       logoMap[normalized] = rawUrl;
@@ -112,21 +161,17 @@ Future<Map<String, String>> _parseLogosInBackground(String jsonStr) async {
   }
 
   // Custom overrides for DAZN MotoGP and DAZN ACB that the user requested
-  logoMap['daznmotogp'] = 'https://amyownwbukcoiuldhozx.supabase.co/storage/v1/object/public/releases/motogp-logo-v2.png';
-  logoMap['daznacb'] = 'https://amyownwbukcoiuldhozx.supabase.co/storage/v1/object/public/releases/acb-logo-v2.png';
-  logoMap['daznbaloncesto'] = 'https://amyownwbukcoiuldhozx.supabase.co/storage/v1/object/public/releases/acb-logo-v2.png';
+  logoMap['daznmotogp'] = 'https://daozombwhujwomhuaryq.supabase.co/storage/v1/object/public/releases/motogp-logo-v2.png';
+  logoMap['daznacb'] = 'https://daozombwhujwomhuaryq.supabase.co/storage/v1/object/public/releases/acb-logo-v2.png';
+  logoMap['daznbaloncesto'] = 'https://daozombwhujwomhuaryq.supabase.co/storage/v1/object/public/releases/acb-logo-v2.png';
 
   return logoMap;
 }
-
-
 
 final logoDatabaseProvider = FutureProvider<Map<String, String>>((ref) async {
   try {
     final jsonStr = await rootBundle.loadString('assets/tvlogos_paths.json');
     final db = await compute(_parseLogosInBackground, jsonStr);
-    // Fire and forget background preloading of all database logos to prevent lag
-    ImageCacheService.preloadImages(db.values.toList().toSet().toList());
     return db;
   } catch (e) {
     return {};

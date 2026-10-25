@@ -1,9 +1,11 @@
+import '../../core/widgets/remote_action.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import 'providers/profile_provider.dart';
 import 'widgets/add_profile_dialog.dart';
-import '../../core/models/profile_model.dart';
 import '../../core/utils/wallpaper_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -14,8 +16,6 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  bool _dontAskAgain = false;
-
   @override
   Widget build(BuildContext context) {
     final profilesAsync = ref.watch(profilesProvider);
@@ -40,14 +40,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           // Capa de opacidad para mejorar contraste
           Positioned.fill(
-            child: Container(
-              color: Colors.black.withOpacity(0.4),
-            ),
+            child: Container(color: Colors.black.withValues(alpha: 0.4)),
           ),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(),
+              const SizedBox(height: 48),
               const Text(
                 "Who's watching?",
                 style: TextStyle(
@@ -57,63 +55,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   letterSpacing: 1.0,
                 ),
               ),
-              const SizedBox(height: 60),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  profilesAsync.when(
-                    data: (profiles) => Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: profiles.map((profile) => Padding(
-                        padding: const EdgeInsets.only(right: 32.0),
-                        child: _buildProfileAvatar(
-                          name: profile.name,
-                          color: Color(profile.colorCode),
-                          size: 150,
-                          onTap: () {
-                            ref.read(activeProfileProvider.notifier).setProfile(profile);
-                            context.go('/channels');
-                          },
+              const SizedBox(height: 32),
+              Expanded(
+                child: profilesAsync.when(
+                  data: (profiles) => GridView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 12,
+                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 210,
+                          childAspectRatio: 0.85,
+                          crossAxisSpacing: 24,
                         ),
-                      )).toList(),
-                    ),
-                    loading: () => const Padding(
-                      padding: EdgeInsets.only(right: 32.0),
-                      child: SizedBox(
-                        width: 150, height: 150,
-                        child: Center(child: CircularProgressIndicator(color: Colors.white)),
-                      ),
-                    ),
-                    error: (err, stack) => const Padding(
-                      padding: EdgeInsets.only(right: 32.0),
-                      child: SizedBox(
-                        width: 150, height: 150,
-                        child: Center(child: Icon(Icons.error_outline, color: Colors.redAccent, size: 50)),
-                      ),
-                    ),
+                    itemCount: profiles.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == profiles.length) {
+                        return _buildNewProfileButton();
+                      }
+                      final profile = profiles[index];
+                      return _buildProfileAvatar(
+                        autofocus: index == 0,
+                        name: profile.name,
+                        color: Color(profile.colorCode),
+                        size: 120,
+                        onTap: () {
+                          ref
+                              .read(activeProfileProvider.notifier)
+                              .setProfile(profile);
+                          context.go('/channels');
+                        },
+                      );
+                    },
                   ),
-                  _buildNewProfileButton(),
-                ],
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, _) => const Center(
+                    child: Text('No se pudieron cargar los perfiles.'),
+                  ),
+                ),
               ),
-              const Spacer(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: _dontAskAgain,
-                    onChanged: (val) => setState(() => _dontAskAgain = val ?? false),
-                    side: const BorderSide(color: Colors.white54, width: 1.5),
-                    activeColor: Colors.white.withOpacity(0.3),
-                    checkColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  ),
-                  const Text(
-                    "Don't ask again",
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 60),
+              const SizedBox(height: 24),
             ],
           ),
         ],
@@ -121,14 +104,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileAvatar({required String name, required Color color, required double size, required VoidCallback onTap}) {
-    return _HoverAvatar(name: name, color: color, size: size, onTap: onTap);
+  Widget _buildProfileAvatar({
+    bool autofocus = false,
+    required String name,
+    required Color color,
+    required double size,
+    required VoidCallback onTap,
+  }) {
+    return _HoverAvatar(
+      name: name,
+      color: color,
+      size: size,
+      onTap: onTap,
+      autofocus: autofocus,
+    );
   }
 
   Widget _buildNewProfileButton() {
     return _HoverAvatar(
+      autofocus: ref.read(profilesProvider).value?.isEmpty ?? false,
       name: 'New profile',
-      color: Colors.white.withOpacity(0.05),
+      color: Colors.white.withValues(alpha: 0.05),
       size: 110,
       icon: Icons.add,
       onTap: () {
@@ -146,6 +142,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 }
 
 class _HoverAvatar extends StatefulWidget {
+  final bool autofocus;
   final String name;
   final Color color;
   final double size;
@@ -153,6 +150,7 @@ class _HoverAvatar extends StatefulWidget {
   final VoidCallback onTap;
 
   const _HoverAvatar({
+    this.autofocus = false,
     required this.name,
     required this.color,
     required this.size,
@@ -175,7 +173,9 @@ class _HoverAvatarState extends State<_HoverAvatar> {
           onEnter: (_) => setState(() => isHovered = true),
           onExit: (_) => setState(() => isHovered = false),
           cursor: SystemMouseCursors.click,
-          child: GestureDetector(
+          child: RemoteAction(
+            autofocus: widget.autofocus,
+            label: widget.name,
             onTap: widget.onTap,
             child: AnimatedContainer(
               width: widget.size,
@@ -183,33 +183,41 @@ class _HoverAvatarState extends State<_HoverAvatar> {
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutExpo,
               transform: isHovered
-                  ? (Matrix4.identity()..scale(1.05))
+                  ? (Matrix4.identity()..scaleByDouble(1.05, 1.05, 1.0, 1.0))
                   : Matrix4.identity(),
               decoration: BoxDecoration(
                 color: widget.color,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: isHovered ? Colors.white.withOpacity(0.8) : Colors.transparent,
+                  color: isHovered
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : Colors.transparent,
                   width: isHovered ? 3 : 0,
                 ),
                 boxShadow: isHovered
                     ? [
                         BoxShadow(
-                          color: widget.color.withOpacity(0.5),
+                          color: widget.color.withValues(alpha: 0.5),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
-                        )
+                        ),
                       ]
                     : [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
-                        )
+                        ),
                       ],
               ),
               child: widget.icon != null
-                  ? Center(child: Icon(widget.icon, color: Colors.white, size: widget.size * 0.35))
+                  ? Center(
+                      child: Icon(
+                        widget.icon,
+                        color: Colors.white,
+                        size: widget.size * 0.35,
+                      ),
+                    )
                   : null,
             ),
           ),

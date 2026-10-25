@@ -1,11 +1,25 @@
 # APEX Media Manager (formerly ESPTV Player)
 
 ## Tech Stack
+- **Current release**: 2.2.54+54. Windows, Android mobile and Android TV share one Flutter app.
 - **Framework**: Flutter (Android & Windows Desktop)
 - **State Management**: Riverpod (`ConsumerWidget`, `Provider`, `FutureProvider`)
 - **Backend / Database**: Supabase (PostgreSQL `app_settings` for OTA updates)
 - **VPN**: `wireguard_flutter` + WGCF (Cloudflare WARP)
 - **Windows Installer**: Inno Setup (`installer.iss`)
+
+## Revival notes (2026-10-25)
+- Active Supabase project: `daozombwhujwomhuaryq`. The former project no longer resolves. Only the publishable key belongs in the client; `.env.local` holds administrative credentials and must never be committed.
+- `README.md` documents local setup, TV controls and publication. `supabase/schema.sql` is the initial schema; RLS isolates profiles by user. `tool/verify_backend.cjs` verifies the API with disposable accounts.
+- `ProfileStore` separates persistence from UI state. Each profile load performs at most one remote sync. Local mode works without a cloud login.
+- `isar` is nullable: if native MDBX fails on a device/runtime, profiles and favourites use a separate SharedPreferences cache. Preserve existing native database files; never crash startup or erase user data to recover.
+- Channel grids use lazy slivers; never nest a shrink-wrapped grid under a list for large playlists. Do not preload the entire logo database. Image downloads are cached, deduplicated and limited to six concurrent requests.
+- TV detection uses `apex/device`; `RemoteAction` provides directional focus, activation and automatic visibility. `AdaptiveBackdrop` removes backdrop passes on TV. Keep all actions reachable by remote and retain mobile/desktop pointer controls.
+- Movie cards open VOD playback; series open a season/episode screen. Player subscriptions and focus nodes are disposed, and remote/media keys control playback.
+- HTTPS certificate validation is enabled. Never restore global certificate-acceptance callbacks. HTTP IPTV sources remain supported. Updates require HTTPS and SHA-256 verification.
+- Outfit is bundled locally, so fonts do not trigger network downloads. Experimental diagnostics in the root and generated Isar files are excluded from normal analysis.
+- VPN private keys must be unique per device or explicitly imported. Shared fallback private keys must never be restored.
+- Android release signing currently retains the original debug signing identity for compatibility; a store release requires a deliberate signing-key migration.
 
 ## Architecture & Key Features
 - **UI/UX**: Glassmorphism design system. Uses `BackdropFilter` and translucent backgrounds over customizable wallpapers (e.g., macOS Big Sur abstract wallpaper).
@@ -52,6 +66,7 @@ Whenever you finish a task, follow this exact workflow to deploy:
    - Run: `flutter build apk --split-per-abi --release`
 4. **Upload Binaries**:
    - Run: `node upload.js ; node upload_windows.js`
+   - Uploads require `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in ignored `.env.local`; scripts use Node's built-in fetch and create versioned paths and SHA-256 hashes.
 5. **Update Supabase Database**:
-   - Use the Supabase MCP tool (`execute_sql`) to update the database:
-     `update app_settings set latest_version = '2.2.41', release_notes = 'Tus notas de parche aquí...';`
+   - Run `node scripts/publish_release.cjs` after both uploads. This updates version, notes, per-ABI APK URLs and all installer hashes atomically in the metadata row. Do not publish a version before all its uploads and validation succeed.
+   - Prefer the Supabase connector when it has permission for the active project; otherwise use the supplied local administrative credentials with verified TLS. Never operate on an unrelated project.
