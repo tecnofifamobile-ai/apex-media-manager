@@ -1,3 +1,4 @@
+import '../widgets/ios_spinner.dart';
 import '../widgets/glass.dart';
 
 import 'dart:io';
@@ -80,7 +81,7 @@ class UpdaterService {
       builder: (_) => const GlassDialog(
         content: Row(
           children: [
-            CircularProgressIndicator(),
+            IosSpinner(),
             SizedBox(width: 24),
             Expanded(child: Text('Descargando actualización…')),
           ],

@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -118,7 +119,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               const SizedBox(
                 width: 30,
                 height: 30,
-                child: CircularProgressIndicator(
+                child: IosSpinner(
                   color: Colors.white24,
                   strokeWidth: 2,
                 ),

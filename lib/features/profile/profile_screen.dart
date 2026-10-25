@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import '../../core/widgets/remote_action.dart';
 
 import 'package:flutter/material.dart';
@@ -90,7 +91,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     },
                   ),
                   loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                      const Center(child: IosSpinner()),
                   error: (_, _) => const Center(
                     child: Text('No se pudieron cargar los perfiles.'),
                   ),

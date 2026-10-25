@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import '../../core/widgets/glass.dart';
 
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ class SeriesEpisodesScreen extends ConsumerWidget {
     body: ref
         .watch(seriesEpisodesProvider(series.id))
         .when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: IosSpinner()),
           error: (_, _) => Center(
             child: TextButton(
               onPressed: () =>

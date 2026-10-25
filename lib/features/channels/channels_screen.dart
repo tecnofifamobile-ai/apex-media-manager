@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import '../../core/widgets/glass.dart';
 import '../../core/widgets/remote_text_field.dart';
 
@@ -13,7 +14,8 @@ import '../../core/models/iptv_models.dart';
 import '../../core/utils/updater_service.dart';
 
 import '../../core/widgets/remote_action.dart';
-import '../favorites/providers/favorites_provider.dart';
+import '../favorites/leagues.dart';
+import '../favorites/providers/league_favorites_provider.dart';
 import '../iptv_parser/providers/iptv_provider.dart';
 import '../iptv_parser/providers/logo_provider.dart';
 import 'channel_groups.dart';
@@ -129,8 +131,7 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
               _filters(),
               Expanded(
                 child: channels.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                  loading: () => const Center(child: IosSpinner()),
                   error: (_, _) => Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -211,51 +212,58 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
     final category = ref.watch(categoryFilterProvider);
     final platform = ref.watch(platformFilterProvider);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 240,
-            child: RemoteTextField(
-              decoration: const InputDecoration(
-                hintText: 'Buscar canal...',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
+      padding: const EdgeInsets.fromLTRB(24, 2, 24, 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          spacing: 8,
+          children: [
+            SizedBox(
+              width: MediaQuery.sizeOf(context).width < 680 ? 175 : 220,
+              child: RemoteTextField(
+                decoration: const InputDecoration(
+                  hintText: 'Buscar canal...',
+                  prefixIcon: Icon(Icons.search),
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  constraints: BoxConstraints(maxHeight: 42),
+                ),
+                onChanged: (value) {
+                  _searchTimer?.cancel();
+                  _searchTimer = Timer(const Duration(milliseconds: 180), () {
+                    if (mounted) {
+                      ref.read(searchFilterProvider.notifier).setValue(value);
+                    }
+                  });
+                },
               ),
-              onChanged: (value) {
-                _searchTimer?.cancel();
-                _searchTimer = Timer(const Duration(milliseconds: 180), () {
-                  if (mounted) {
-                    ref.read(searchFilterProvider.notifier).setValue(value);
-                  }
-                });
-              },
             ),
-          ),
-          _dropdown(
-            'País',
-            country,
-            filters['countries'] ?? [],
-            (value) => ref.read(countryFilterProvider.notifier).setValue(value),
-          ),
-          _dropdown(
-            'Categoría',
-            category,
-            filters['categories'] ?? [],
-            (value) =>
-                ref.read(categoryFilterProvider.notifier).setValue(value),
-          ),
-          _dropdown(
-            'Proveedor',
-            platform,
-            filters['platforms'] ?? [],
-            (value) =>
-                ref.read(platformFilterProvider.notifier).setValue(value),
-          ),
-        ],
+            _dropdown(
+              'País',
+              country,
+              filters['countries'] ?? [],
+              (value) =>
+                  ref.read(countryFilterProvider.notifier).setValue(value),
+            ),
+            _dropdown(
+              'Categoría',
+              category,
+              filters['categories'] ?? [],
+              (value) =>
+                  ref.read(categoryFilterProvider.notifier).setValue(value),
+            ),
+            _dropdown(
+              'Proveedor',
+              platform,
+              filters['platforms'] ?? [],
+              (value) =>
+                  ref.read(platformFilterProvider.notifier).setValue(value),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -276,7 +284,7 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
     ],
     child: GlassSurface(
       radius: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -301,17 +309,15 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
     bool autofocus = false,
   }) {
     final channel = group.channels.first;
+    final leagueId = ref.watch(leagueIdsByChannelProvider)[group.cleanName];
     return RemoteAction(
       autofocus: autofocus,
       key: ValueKey('${group.category}/${group.cleanName}'),
       label: channelDisplayName(channel.name),
       onTap: () => _openGroup(group),
-      onLongPress: () => _chooseQuality(group),
-      onSecondaryTap: () => _chooseQuality(group),
       child: GlassSurface(
         radius: 24,
-        blur: true,
-        grouped: true,
+        blur: false,
         child: Stack(
           children: [
             Padding(
@@ -335,34 +341,38 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
                 ],
               ),
             ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: Consumer(
-                builder: (context, ref, _) {
-                  final favorite = ref.watch(
-                    favoritesProvider.select(
-                      (values) =>
-                          values.any((f) => f.cleanName == group.cleanName),
-                    ),
-                  );
-                  return IconButton(
-                    tooltip: favorite ? 'Quitar favorito' : 'Añadir favorito',
-                    icon: Icon(
-                      favorite ? Icons.star : Icons.star_border,
-                      color: favorite ? Colors.amber : Colors.white60,
-                      size: 22,
-                    ),
-                    onPressed: () => ref
-                        .read(favoritesProvider.notifier)
-                        .toggleFavorite(
-                          group.cleanName,
-                          category: group.category,
-                        ),
-                  );
-                },
+            if (leagueId != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final profileKey = ref.watch(leagueProfileKeyProvider);
+                    final favorite =
+                        ref
+                            .watch(leagueFavoritesProvider(profileKey))
+                            .value
+                            ?.containsKey(leagueId) ??
+                        false;
+                    return IconButton(
+                      tooltip: favorite
+                          ? 'Quitar liga de favoritos'
+                          : 'Añadir liga a favoritos',
+                      icon: Icon(
+                        favorite ? Icons.star : Icons.star_border,
+                        color: favorite ? Colors.amber : Colors.white60,
+                        size: 22,
+                      ),
+                      onPressed: () => ref
+                          .read(leagueFavoritesProvider(profileKey).notifier)
+                          .save(
+                            leagueId,
+                            favorite ? null : const LeagueChoice(),
+                          ),
+                    );
+                  },
+                ),
               ),
-            ),
             if (group.channels.length > 1)
               Positioned(
                 top: 0,

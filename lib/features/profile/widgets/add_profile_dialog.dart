@@ -1,3 +1,4 @@
+import '../../../core/widgets/liquid_switcher.dart';
 import '../../../core/widgets/remote_text_field.dart';
 import '../../../core/widgets/adaptive_backdrop.dart';
 import '../../../core/widgets/remote_action.dart';
@@ -142,12 +143,21 @@ class _AddProfileDialogState extends ConsumerState<AddProfileDialog> {
                   const SizedBox(height: 24),
 
                   // Tipo de conexión
-                  Row(
-                    children: [
-                      _buildTypeButton('M3U Playlist', ProfileType.m3u),
-                      const SizedBox(width: 12),
-                      _buildTypeButton('Xtream Codes', ProfileType.xtreamCodes),
+                  LiquidSwitcher<ProfileType>(
+                    segments: const [
+                      LiquidSegment(
+                        ProfileType.m3u,
+                        'M3U Playlist',
+                        Icons.playlist_play,
+                      ),
+                      LiquidSegment(
+                        ProfileType.xtreamCodes,
+                        'Xtream Codes',
+                        Icons.dns_outlined,
+                      ),
                     ],
+                    value: _selectedType,
+                    onChanged: (type) => setState(() => _selectedType = type),
                   ),
                   const SizedBox(height: 24),
 
@@ -255,38 +265,6 @@ class _AddProfileDialogState extends ConsumerState<AddProfileDialog> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeButton(String text, ProfileType type) {
-    final isSelected = _selectedType == type;
-    return Expanded(
-      child: RemoteAction(
-        autofocus: type == ProfileType.m3u,
-        onTap: () => setState(() => _selectedType = type),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Colors.white.withValues(alpha: 0.2)
-                : Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected
-                  ? Colors.white.withValues(alpha: 0.5)
-                  : Colors.white12,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.white54,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ),

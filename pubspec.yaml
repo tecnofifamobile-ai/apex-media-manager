@@ -1,7 +1,7 @@
 name: esptv_player
 description: "IPTV media manager for Windows, Android and Android TV."
 publish_to: 'none'
-version: 2.2.55+55
+version: 2.2.56+56
 
 environment:
   sdk: ^3.13.3
@@ -50,6 +50,7 @@ flutter:
     - assets/tvlogos_paths.json
     - assets/channel_categories.json
     - assets/images/
+    - assets/images/leagues/
     - assets/icon.jpg
 
 flutter_launcher_icons:

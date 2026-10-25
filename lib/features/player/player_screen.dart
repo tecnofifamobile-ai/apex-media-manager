@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import '../../core/widgets/glass.dart';
 
 import 'dart:async';
@@ -241,7 +242,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   child: Video(controller: _video, controls: NoVideoControls),
                 ),
                 if (_buffering && _error == null)
-                  const Center(child: CircularProgressIndicator()),
+                  const Center(child: IosSpinner()),
                 if (_error != null)
                   Center(
                     child: Column(

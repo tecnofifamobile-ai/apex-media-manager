@@ -1,3 +1,6 @@
+import 'package:flutter/cupertino.dart' show CupertinoSwitch;
+
+import '../../core/widgets/ios_spinner.dart';
 import '../../core/widgets/glass.dart';
 import '../../core/widgets/remote_text_field.dart';
 import '../../core/widgets/adaptive_backdrop.dart';
@@ -126,15 +129,15 @@ class VpnSettingsScreen extends ConsumerWidget {
                               const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(
+                                child: IosSpinner(
                                   color: Color(0xFF6B4EE6),
                                   strokeWidth: 2,
                                 ),
                               )
                             else
-                              Switch(
+                              CupertinoSwitch(
                                 value: vpnEnabled,
-                                activeThumbColor: const Color(0xFF6B4EE6),
+                                activeTrackColor: const Color(0xFF34C759),
                                 onChanged: (val) {
                                   ref
                                       .read(vpnEnabledProvider.notifier)

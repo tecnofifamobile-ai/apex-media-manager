@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import '../../core/widgets/remote_text_field.dart';
 import '../../core/widgets/remote_action.dart';
 
@@ -251,7 +252,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(
+                              child: IosSpinner(
                                 color: Colors.black,
                                 strokeWidth: 2,
                               ),

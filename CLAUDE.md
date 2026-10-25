@@ -1,7 +1,7 @@
 # APEX Media Manager (formerly ESPTV Player)
 
 ## Tech Stack
-- **Current release**: 2.2.55+55. Windows, Android mobile and Android TV share one Flutter app.
+- **Current release**: 2.2.56+56. Windows, Android mobile and Android TV share one Flutter app.
 - **Framework**: Flutter (Android & Windows Desktop)
 - **State Management**: Riverpod (`ConsumerWidget`, `Provider`, `FutureProvider`)
 - **Backend / Database**: Supabase (PostgreSQL `app_settings` for OTA updates)

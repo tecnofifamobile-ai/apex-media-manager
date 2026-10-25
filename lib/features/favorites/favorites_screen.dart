@@ -1,9 +1,3 @@
-import '../../core/widgets/glass.dart';
-import '../../core/widgets/remote_text_field.dart';
-import '../channels/channel_groups.dart';
-import '../../core/widgets/adaptive_backdrop.dart';
-import '../../core/widgets/remote_action.dart';
-
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -11,28 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/iptv_models.dart';
-import '../../core/models/favorite_channel.dart';
+import '../../core/widgets/glass.dart';
+import '../../core/widgets/ios_spinner.dart';
+import '../../core/widgets/remote_action.dart';
+import '../channels/channel_groups.dart';
 import '../iptv_parser/providers/iptv_provider.dart';
-import '../iptv_parser/providers/logo_provider.dart';
-import 'providers/favorites_provider.dart';
-import 'utils/wallpaper_mapper.dart';
-import '../channels/widgets/iptv_image.dart';
-import 'widgets/hero_image.dart';
-
-class FavoriteChannelData {
-  final FavoriteChannel fav;
-  final List<Channel> variants;
-  FavoriteChannelData(this.fav, this.variants);
-
-  Channel get currentChannel {
-    if (fav.preferredUrl != null) {
-      try {
-        return variants.firstWhere((c) => c.url == fav.preferredUrl);
-      } catch (_) {}
-    }
-    return variants.first;
-  }
-}
+import 'leagues.dart';
+import 'providers/league_favorites_provider.dart';
 
 class FavoritesScreen extends ConsumerStatefulWidget {
   const FavoritesScreen({super.key});
@@ -41,577 +20,571 @@ class FavoritesScreen extends ConsumerStatefulWidget {
 }
 
 class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
-  String _hoveredCleanName = '';
-  final ScrollController _scrollController = ScrollController();
+  bool _choosing = false;
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _showChangeCategoryDialog(FavoriteChannel fav) {
-    final tc = TextEditingController(text: fav.category);
-    showDialog(
-      context: context,
-      builder: (ctx) => GlassDialog(
-        title: const Text(
-          'Cambiar Categoría',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: RemoteTextField(
-          controller: tc,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: 'Nombre de la nueva categoría',
-            hintStyle: TextStyle(color: Colors.white54),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white24),
-            ),
+  Future<T?> _choose<T>(
+    String title,
+    String subtitle,
+    List<T> items,
+    String Function(T) label,
+  ) => showDialog<T>(
+    context: context,
+    builder: (ctx) => GlassDialog(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 13, color: Colors.white60),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancelar',
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6B4EE6),
-            ),
-            onPressed: () {
-              if (tc.text.isNotEmpty) {
-                ref
-                    .read(favoritesProvider.notifier)
-                    .setCategory(fav.cleanName, tc.text.trim());
-                Navigator.pop(ctx);
-              }
-            },
-            child: const Text('Guardar', style: TextStyle(color: Colors.white)),
-          ),
+          const SizedBox(height: 6),
+          Text(title),
         ],
       ),
-    );
-  }
-
-  void _showOptionsDialog(FavoriteChannelData data) {
-    showDialog(
-      context: context,
-      builder: (ctx) => GlassDialog(
-        title: Text(
-          'Opciones: ${formatTitle(data.variants.first.name)}',
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: SizedBox(
-          width: 300,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (data.variants.length > 1) ...[
-                const Text(
-                  'Seleccionar Calidad',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ...data.variants.map(
-                  (v) => ListTile(
-                    title: Text(
-                      v.name,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    trailing: data.fav.preferredUrl == v.url
-                        ? const Icon(Icons.check, color: Colors.green)
-                        : null,
-                    onTap: () {
-                      ref
-                          .read(favoritesProvider.notifier)
-                          .updatePreferred(data.fav.cleanName, v.url, v.name);
-                      Navigator.pop(ctx);
-                    },
-                  ),
-                ),
-                const Divider(color: Colors.white24),
-              ],
-              ListTile(
-                leading: const Icon(Icons.folder, color: Colors.blue),
-                title: const Text(
-                  'Mover a categoría...',
-                  style: TextStyle(color: Colors.blue),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showChangeCategoryDialog(data.fav);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text(
-                  'Quitar de favoritos',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () {
-                  ref
-                      .read(favoritesProvider.notifier)
-                      .toggleFavorite(data.fav.cleanName);
-                  Navigator.pop(ctx);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String formatTitle(String rawName) {
-    String name = rawName;
-    name = name.replaceAll(RegExp(r'^.*?\|\s*'), '');
-    name = name.replaceAll(
-      RegExp(
-        r'\b(fhd|hd|sd|4k|hevc|hdr|uhd|h265|vip|premium|1080p|720p)\b',
-        caseSensitive: false,
-      ),
-      '',
-    );
-    name = name.replaceAll(
-      RegExp(r'\[bk\]|\(bk\)|bk\b', caseSensitive: false),
-      '',
-    );
-    name = name.replaceAll(RegExp(r'es\s*\|', caseSensitive: false), '');
-    return name.trim();
-  }
-
-  String getQualityLabel(String name) {
-    final upper = name.toUpperCase();
-    if (upper.contains('4K')) return '4K UHD';
-    if (upper.contains('FHD') || upper.contains('1080')) return 'FHD 1080p';
-    if (upper.contains('HD') || upper.contains('720')) return 'HD 720p';
-    return 'SD';
-  }
-
-  Widget _buildCategoryRow(
-    String categoryName,
-    List<FavoriteChannelData> items,
-    Map<String, String> logoDb,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 8.0),
-          child: Text(
-            categoryName,
-            style: const TextStyle(
-              color: Colors.amber,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+      content: SizedBox(
+        width: 430,
+        height: (items.length * 60.0).clamp(60.0, 340.0),
+        child: ListView.builder(
+          itemCount: items.length,
+          itemBuilder: (_, i) => ListTile(
+            autofocus: i == 0,
+            title: Text(
+              label(items[i]),
+              maxLines: 2,
+              style: const TextStyle(fontSize: 15),
             ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white54,
+            ),
+            onTap: () => Navigator.pop(ctx, items[i]),
           ),
         ),
-        SizedBox(
-          height: 180,
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0),
-            scrollDirection: Axis.horizontal,
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              final isHovered = _hoveredCleanName == item.fav.cleanName;
-              String fallback = getLogoFallback(
-                item.variants.first.name,
-                logoDb,
-              );
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    ),
+  );
 
-              return MouseRegion(
-                onEnter: (_) =>
-                    setState(() => _hoveredCleanName = item.fav.cleanName),
-                child: RemoteAction(
-                  onFocusChange: (focused) {
-                    if (focused) {
-                      setState(() => _hoveredCleanName = item.fav.cleanName);
-                    }
-                  },
-                  onTap: () {
-                    if (item.variants.length > 1 &&
-                        item.fav.preferredUrl == null) {
-                      _showOptionsDialog(item);
-                    } else {
-                      context.pushNamed('player', extra: item.currentChannel);
-                    }
-                  },
-                  onLongPress: () => _showOptionsDialog(item),
-                  onSecondaryTap: () => _showOptionsDialog(item),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutExpo,
-                    margin: const EdgeInsets.only(
-                      right: 20,
-                      top: 10,
-                      bottom: 10,
+  Future<void> _open(League league, {bool change = false}) async {
+    if (_choosing) return;
+    final groups = ref.read(leagueChannelsProvider)[league.id] ?? [];
+    if (groups.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Tu lista no contiene canales de ${league.name}. Añade una fuente en Ajustes.',
+          ),
+        ),
+      );
+      return;
+    }
+    _choosing = true;
+    final profileKey = ref.read(leagueProfileKeyProvider);
+    try {
+      final choices = await ref.read(
+        leagueFavoritesProvider(profileKey).future,
+      );
+      if (!mounted || profileKey != ref.read(leagueProfileKeyProvider)) return;
+      if (!change) {
+        final savedUrl = choices[league.id]?.url;
+        for (final group in groups) {
+          for (final channel in group.channels) {
+            if (savedUrl == channel.url) {
+              context.pushNamed('player', extra: channel);
+              return;
+            }
+          }
+        }
+      }
+      final group = await _choose<ChannelGroup>(
+        'Elige el canal',
+        league.name,
+        groups,
+        (group) => channelDisplayName(group.channels.first.name),
+      );
+      if (group == null || !mounted) return;
+      final selected = await _choose<Channel>(
+        'Elige la calidad',
+        channelDisplayName(group.channels.first.name),
+        group.channels,
+        (channel) => channel.name,
+      );
+      if (selected == null ||
+          !mounted ||
+          profileKey != ref.read(leagueProfileKeyProvider)) {
+        return;
+      }
+      await ref
+          .read(leagueFavoritesProvider(profileKey).notifier)
+          .save(
+            league.id,
+            LeagueChoice(url: selected.url, channelName: selected.name),
+          );
+      if (mounted && !change) context.pushNamed('player', extra: selected);
+    } finally {
+      _choosing = false;
+    }
+  }
+
+  Future<void> _manage() async {
+    final profileKey = ref.read(leagueProfileKeyProvider);
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Consumer(
+        builder: (ctx, ref, _) {
+          final saved =
+              ref.watch(leagueFavoritesProvider(profileKey)).value ?? {};
+          final available = ref.watch(leagueChannelsProvider);
+          return GlassDialog(
+            title: const Text('Tus ligas'),
+            content: SizedBox(
+              width: 430,
+              height: 360,
+              child: ListView.builder(
+                itemCount: leagues.length,
+                itemBuilder: (_, i) {
+                  final league = leagues[i];
+                  final pinned = saved.containsKey(league.id);
+                  final count = available[league.id]?.length ?? 0;
+                  return ListTile(
+                    autofocus: i == 0,
+                    title: Text(
+                      league.name,
+                      style: const TextStyle(fontSize: 15),
                     ),
-                    width: isHovered ? 260 : 220,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: isHovered
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ]
-                          : [],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: AdaptiveBackdrop(
-                        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isHovered
-                                  ? Colors.white.withValues(alpha: 0.8)
-                                  : Colors.white.withValues(alpha: 0.1),
-                              width: isHovered ? 2 : 1,
-                            ),
-                          ),
-                          child: Stack(
-                            children: [
-                              Positioned.fill(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20.0),
-                                    child: IptvImage(
-                                      url: item.currentChannel.logo,
-                                      fallbackUrl: fallback,
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (isHovered)
-                                Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      borderRadius: const BorderRadius.vertical(
-                                        bottom: Radius.circular(14),
-                                      ),
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.black.withValues(alpha: 0.8),
-                                          Colors.transparent,
-                                        ],
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      formatTitle(item.currentChannel.name),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                    subtitle: Text(
+                      count == 0
+                          ? 'Sin canales en esta lista'
+                          : '$count canales disponibles',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white54,
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-      ],
+                    trailing: Icon(
+                      pinned
+                          ? Icons.check_circle_rounded
+                          : Icons.add_circle_outline,
+                      color: pinned ? Colors.white : Colors.white38,
+                    ),
+                    onTap: () => ref
+                        .read(leagueFavoritesProvider(profileKey).notifier)
+                        .save(league.id, pinned ? null : const LeagueChoice()),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Listo'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = ref.watch(favoriteCategoriesProvider);
-    final channelsAsync = ref.watch(channelsProvider);
-    final logoDbAsync = ref.watch(logoDatabaseProvider);
-    final logoDb = logoDbAsync.value ?? {};
-    final allFavs = ref.watch(favoritesProvider);
-    final channelIndex = ref.watch(channelsByIdentityProvider);
-
-    Map<String, List<FavoriteChannelData>> channelsByCategory = {};
-    FavoriteChannelData? hoveredItem;
-
-    channelsAsync.whenData((channels) {
-      if (_hoveredCleanName.isEmpty && allFavs.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() => _hoveredCleanName = allFavs.first.cleanName);
-          }
-        });
-      }
-
-      for (var cat in categories) {
-        final favsInCat = allFavs.where((f) => f.category == cat).toList();
-        List<FavoriteChannelData> favChannels = [];
-        for (var fav in favsInCat) {
-          final match = channelIndex[fav.cleanName] ?? <Channel>[];
-          if (match.isNotEmpty) {
-            final data = FavoriteChannelData(fav, match);
-            favChannels.add(data);
-            if (fav.cleanName == _hoveredCleanName) {
-              hoveredItem = data;
-            }
-          }
-        }
-        if (favChannels.isNotEmpty) {
-          channelsByCategory[cat] = favChannels;
-        }
-      }
-    });
-
-    final String wallpaperUrl = WallpaperMapper.getHeroWallpaper(
-      _hoveredCleanName,
-      null,
+    final channels = ref.watch(channelsProvider);
+    final available = ref.watch(leagueChannelsProvider);
+    final saved = ref.watch(
+      leagueFavoritesProvider(ref.watch(leagueProfileKeyProvider)),
     );
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0F16),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 700),
-              child: HeroImage(key: ValueKey(wallpaperUrl), url: wallpaperUrl),
+    return GlassScaffold(
+      body: saved.when(
+        loading: () => const Center(child: IosSpinner()),
+        error: (_, _) => Center(
+          child: TextButton(
+            onPressed: () => ref.invalidate(
+              leagueFavoritesProvider(ref.read(leagueProfileKeyProvider)),
             ),
+            child: const Text('Reintentar'),
           ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF0D0F16).withValues(alpha: 0.95),
-                    const Color(0xFF0D0F16).withValues(alpha: 0.7),
-                    const Color(0xFF0D0F16).withValues(alpha: 0.0),
-                  ],
-                  stops: const [0.0, 0.4, 1.0],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF0D0F16).withValues(alpha: 1.0),
-                    const Color(0xFF0D0F16).withValues(alpha: 0.5),
-                    const Color(0xFF0D0F16).withValues(alpha: 0.0),
-                  ],
-                  stops: const [0.0, 0.4, 0.8],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-          ),
-
-          Positioned.fill(
-            child: channelsAsync.when(
-              data: (_) {
-                if (channelsByCategory.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Aun no tienes canales favoritos',
-                      style: TextStyle(color: Colors.white70, fontSize: 18),
+        ),
+        data: (choices) {
+          final pinned = leagues
+              .where((league) => choices.containsKey(league.id))
+              .toList();
+          return LayoutBuilder(
+            builder: (context, box) {
+              final wide = box.maxWidth >= 1000;
+              final columns = box.maxWidth >= 650 ? 2 : 1;
+              final rows = wide
+                  ? (pinned.length / 3).ceil()
+                  : (pinned.length / columns).ceil();
+              return CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      wide ? 44 : 22,
+                      22,
+                      wide ? 44 : 22,
+                      24,
                     ),
-                  );
-                }
-
-                return ListView(
-                  controller: _scrollController,
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    Container(
-                      height: 400,
-                      padding: const EdgeInsets.only(
-                        left: 40,
-                        right: 40,
-                        top: 120,
-                      ),
-                      child: hoveredItem == null
-                          ? const SizedBox()
-                          : Column(
+                    sliver: SliverToBoxAdapter(
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  formatTitle(hoveredItem!.currentChannel.name),
-                                  style: const TextStyle(
+                                  'Favoritos',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -1,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Tus ligas. Tu juego.',
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _manage,
+                            icon: const Icon(Icons.add_rounded, size: 20),
+                            label: Text(
+                              box.maxWidth < 400 ? 'Ligas' : 'Editar ligas',
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.all(14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (channels.isLoading)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Center(child: IosSpinner()),
+                      ),
+                    ),
+                  if (channels.hasError)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: TextButton(
+                          onPressed: () => ref.invalidate(channelsProvider),
+                          child: const Text(
+                            'No se pudo cargar la lista. Reintentar',
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (pinned.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: TextButton.icon(
+                          onPressed: _manage,
+                          icon: const Icon(Icons.add_circle_outline),
+                          label: const Text('Añade tu primera liga'),
+                        ),
+                      ),
+                    ),
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: wide ? 44 : 22),
+                    sliver: SliverList.builder(
+                      itemCount: rows,
+                      itemBuilder: (context, row) {
+                        Widget card(int index) {
+                          if (index >= pinned.length) {
+                            return const SizedBox.expand();
+                          }
+                          final league = pinned[index];
+                          return _LeagueCard(
+                            key: ValueKey('league-${league.id}'),
+                            league: league,
+                            channels: available[league.id]?.length ?? 0,
+                            selection: choices[league.id]?.channelName,
+                            autofocus: index == 0,
+                            onTap: () => _open(league),
+                            onChange: () => _open(league, change: true),
+                          );
+                        }
+
+                        if (wide) {
+                          final i = row * 3;
+                          // A single tile keeps its hero size; following rows use a bento composition.
+                          final second = i + 1 < pinned.length;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 18),
+                            child: SizedBox(
+                              height: 440,
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(flex: 3, child: card(i)),
+                                  const SizedBox(width: 18),
+                                  Expanded(
+                                    flex: 2,
+                                    child: second
+                                        ? Column(
+                                            children: [
+                                              Expanded(child: card(i + 1)),
+                                              const SizedBox(height: 18),
+                                              Expanded(child: card(i + 2)),
+                                            ],
+                                          )
+                                        : _AddLeagueTile(onTap: _manage),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: SizedBox(
+                            height: columns == 1 ? 310 : 300,
+                            child: Row(
+                              children: [
+                                for (
+                                  var column = 0;
+                                  column < columns;
+                                  column++
+                                ) ...[
+                                  if (column > 0) const SizedBox(width: 16),
+                                  Expanded(child: card(row * columns + column)),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  if (pinned.isNotEmpty)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(24, 8, 24, 28),
+                        child: Text(
+                          'Mantén pulsada una liga para cambiar el canal o la calidad.\nEn TV: botón Menú · En ordenador: clic derecho.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: Colors.white38),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AddLeagueTile extends StatelessWidget {
+  const _AddLeagueTile({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => RemoteAction(
+    onTap: onTap,
+    label: 'Añadir ligas',
+    child: GlassSurface(
+      child: const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.add_circle_outline_rounded,
+              size: 36,
+              color: Colors.white54,
+            ),
+            SizedBox(height: 14),
+            Text(
+              'Más de lo que te mueve',
+              style: TextStyle(color: Colors.white70),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Añadir ligas',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _LeagueCard extends StatefulWidget {
+  const _LeagueCard({
+    super.key,
+    required this.league,
+    required this.channels,
+    this.selection,
+    required this.onTap,
+    required this.onChange,
+    this.autofocus = false,
+  });
+  final League league;
+  final int channels;
+  final String? selection;
+  final VoidCallback onTap, onChange;
+  final bool autofocus;
+  @override
+  State<_LeagueCard> createState() => _LeagueCardState();
+}
+
+class _LeagueCardState extends State<_LeagueCard> {
+  bool _active = false;
+  @override
+  Widget build(BuildContext context) {
+    final league = widget.league;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _active = true),
+      onExit: (_) => setState(() => _active = false),
+      child: AnimatedScale(
+        scale: _active ? 1.015 : 1,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        child: RemoteAction(
+          label: league.name,
+          autofocus: widget.autofocus,
+          onFocusChange: (value) => setState(() => _active = value),
+          onTap: widget.onTap,
+          onLongPress: widget.onChange,
+          onSecondaryTap: widget.onChange,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                  child: Image.asset(
+                    league.background,
+                    fit: BoxFit.cover,
+                    cacheWidth: 1100,
+                  ),
+                ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0x5810141E),
+                        Color(0x5510141E),
+                        Color(0xED080B13),
+                      ],
+                    ),
+                  ),
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0x32FFFFFF),
+                      width: .8,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(26, 22, 26, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        league.subtitle,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: league.id == 'laliga'
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Image.asset(
+                                    'assets/images/leagues/laliga-logo.png',
+                                    width: 190,
+                                    height: 160,
+                                    cacheWidth: 600,
+                                    fit: BoxFit.contain,
                                     color: Colors.white,
-                                    fontSize: 56,
-                                    fontWeight: FontWeight.w900,
-                                    height: 1.1,
+                                    colorBlendMode: BlendMode.srcIn,
                                   ),
-                                  maxLines: 2,
+                                )
+                              : Text(
+                                  league.name,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: league.name.length > 16 ? 24 : 36,
+                                    height: 1,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -1,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  league.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.selection ??
+                                      '${widget.channels} canales · Elige tu señal',
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Text(
-                                      '5.0',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        getQualityLabel(
-                                          hoveredItem!.currentChannel.name,
-                                        ),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        'Live TV',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 20),
-                                SizedBox(
-                                  width: 600,
-                                  child: Text(
-                                    'Disfruta de la mejor programacion en directo a traves de ${formatTitle(hoveredItem!.currentChannel.name)}. Deportes, peliculas, series y eventos en vivo disponibles las 24 horas.',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.7,
-                                      ),
-                                      fontSize: 16,
-                                      height: 1.4,
-                                    ),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    if (hoveredItem!.variants.length > 1 &&
-                                        hoveredItem!.fav.preferredUrl == null) {
-                                      _showOptionsDialog(hoveredItem!);
-                                    } else {
-                                      context.pushNamed(
-                                        'player',
-                                        extra: hoveredItem!.currentChannel,
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.play_arrow,
-                                    color: Colors.black,
-                                  ),
-                                  label: const Text(
-                                    'Ver Ahora',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 32,
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
-                    ),
-                    const SizedBox(height: 40),
-                    ...categories
-                        .where((c) => channelsByCategory.containsKey(c))
-                        .map(
-                          (cat) => _buildCategoryRow(
-                            cat,
-                            channelsByCategory[cat]!,
-                            logoDb,
                           ),
-                        ),
-                    const SizedBox(height: 100),
-                  ],
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, s) => const Center(
-                child: Text('Error', style: TextStyle(color: Colors.white)),
-              ),
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.play_circle_fill_rounded,
+                            size: 30,
+                            color: Colors.white70,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

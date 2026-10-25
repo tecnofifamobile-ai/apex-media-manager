@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../utils/wallpaper_provider.dart';
+import 'shell_insets.dart';
 
 /// Frosted surfaces share the same light, borders and corner geometry.
 class GlassSurface extends StatelessWidget {
@@ -28,9 +29,9 @@ class GlassSurface extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0x24FFFFFF), Color(0x0CFFFFFF)],
+          colors: [Color(0x26FFFFFF), Color(0x08FFFFFF), Color(0x16FFFFFF)],
         ),
-        border: Border.all(color: const Color(0x24FFFFFF)),
+        border: Border.all(color: const Color(0x26FFFFFF), width: .8),
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -87,15 +88,20 @@ class GlassScaffold extends StatelessWidget {
   final Widget body;
   final PreferredSizeWidget? appBar;
   @override
-  Widget build(BuildContext context) => GlassBackground(
-    child: BackdropGroup(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: appBar,
-        body: body,
+  Widget build(BuildContext context) {
+    final insets = FloatingShellInsets.of(context);
+    final page = Padding(
+      padding: insets ?? EdgeInsets.zero,
+      child: BackdropGroup(
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: appBar,
+          body: body,
+        ),
       ),
-    ),
-  );
+    );
+    return insets == null ? GlassBackground(child: page) : page;
+  }
 }
 
 class GlassTile extends StatelessWidget {

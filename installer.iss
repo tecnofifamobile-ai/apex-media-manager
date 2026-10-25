@@ -1,7 +1,7 @@
 [Setup]
 AppId={{5F7A6937-2E80-4D56-8A19-9B948C9EAC72}
 AppName=APEX Media Manager
-AppVersion=2.2.55
+AppVersion=2.2.56
 AppPublisher=APEX
 AppPublisherURL=https://apexmediamanager.com
 AppSupportURL=https://apexmediamanager.com

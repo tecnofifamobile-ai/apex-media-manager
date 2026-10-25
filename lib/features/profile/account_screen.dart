@@ -1,4 +1,5 @@
 import '../../core/widgets/glass.dart';
+import '../../core/widgets/ios_spinner.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,7 +49,7 @@ class AccountScreen extends ConsumerWidget {
                   ),
                 )
                 .toList(),
-            loading: () => [const LinearProgressIndicator()],
+            loading: () => [const Center(child: IosSpinner())],
             error: (_, _) => [
               const Text('No se pudieron cargar los perfiles.'),
             ],

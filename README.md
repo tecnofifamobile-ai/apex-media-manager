@@ -14,7 +14,7 @@ Consulta [CLAUDE.md](CLAUDE.md) para la arquitectura y el procedimiento de publi
 
 ## Android TV
 
-La misma APK admite móvil y televisión. Incluye launcher Leanback, banner, orientación horizontal en TV y navegación por foco. Usa las flechas del mando para desplazarte y OK para activar. En los canales, el botón de capas permite elegir calidad y la estrella guarda favoritos. En el reproductor, OK muestra los controles; el botón multimedia pausa/reanuda; atrás oculta los controles y después vuelve. En películas y episodios se puede avanzar y retroceder.
+La misma APK admite móvil y televisión. Incluye launcher Leanback, banner, orientación horizontal en TV y navegación por foco. Usa las flechas del mando para desplazarte y OK para activar. En los canales, el botón de capas permite elegir calidad y la estrella guarda la liga en Favoritos. En el reproductor, OK muestra los controles; el botón multimedia pausa/reanuda; atrás oculta los controles y después vuelve. En películas y episodios se puede avanzar y retroceder.
 
 Selecciona la APK adecuada: `arm64-v8a` para equipos ARM de 64 bits, `armeabi-v7a` para ARM de 32 bits y `x86_64` para dispositivos Intel compatibles. La compatibilidad de códecs y el rendimiento final también dependen del televisor y de la fuente.
 
@@ -48,9 +48,9 @@ Los scripts de experimentación, datos descargados, configuraciones privadas y e
 
 ## Validación del 25/10/2026
 
-`flutter analyze` sin incidencias y 23 pruebas automatizadas superadas: sincronización acotada, almacenamiento alternativo, rejilla diferida con 20.000 canales, mando y teclado de TV, VOD/episodios, VPN y descargas verificadas. La corrección HTTPS rechaza certificados no confiables y nombres de servidor incorrectos; las pruebas mantienen HTTPS confiable y listas HTTP.
+`flutter analyze` sin incidencias y 26 pruebas automatizadas superadas: sincronización acotada, almacenamiento alternativo, rejilla diferida con 20.000 canales, mando y teclado de TV, VOD/episodios, VPN y descargas verificadas. La corrección HTTPS rechaza certificados no confiables y nombres de servidor incorrectos; las pruebas mantienen HTTPS confiable y listas HTTP.
 
-Compilados el instalador Windows y las APK ARM64, ARMv7 y x86_64. Backend verificado con cuentas temporales: aislamiento de perfiles, inserción propia y lectura pública de metadatos. Publicación 2.2.54 con hashes por plataforma.
+Compilados el instalador Windows y las APK ARM64, ARMv7 y x86_64. Backend verificado con cuentas temporales: aislamiento de perfiles, inserción propia y lectura pública de metadatos. Publicación 2.2.56 con hashes por plataforma.
 
 En el emulador Android TV se verificaron arranque, detección de TV, navegación, foco, catálogo y temporadas. La reproducción llegó al motor de vídeo, pero la captura permaneció negra bajo traducción ARM del emulador x86: la imagen de vídeo **queda pendiente de validar en un televisor físico**. No se ha verificado un túnel VPN real ni el arranque gráfico de Windows con UAC.
 
@@ -59,3 +59,9 @@ En el emulador Android TV se verificaron arranque, detección de TV, navegación
 ## Interfaz 2.2.55
 
 Liquid Glass es la referencia visual común: navegación flotante, paneles translúcidos, filtros redondeados y diálogos compactos. Ajustes conserva su diseño. Las rejillas siguen siendo diferidas y comparten el filtro de fondo para mantener el rendimiento.
+
+## Interfaz 2.2.56
+
+La navegación es una cápsula independiente sobre el fondo continuo, con lente de selección animada y desenfoque real. Los filtros se desplazan en una sola fila. Favoritos muestra ligas en una galería bento: LaLiga, Champions, Premier, NBA y otras competiciones. Las señales proceden exclusivamente de la lista del usuario; no se incluyen servicios ni streams. La primera pulsación elige canal y calidad; las siguientes reproducen la elección guardada por perfil. Mantener pulsado permite cambiarla; en TV también funciona mantener OK o pulsar Menú, y en Windows el clic derecho. Editar ligas permite añadir y quitar tarjetas. Se conservan los datos antiguos de favoritos de canales.
+
+Los componentes de 21st.dev se han adaptado de forma nativa a Flutter; los instaladores React/shadcn no se ejecutan en este proyecto. Referencias y procedencia de imágenes en [docs/UI_REFERENCES.md](docs/UI_REFERENCES.md). El indicador de carga común es el spinner de iOS.

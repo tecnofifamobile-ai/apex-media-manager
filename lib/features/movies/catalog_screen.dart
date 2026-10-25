@@ -1,3 +1,4 @@
+import '../../core/widgets/ios_spinner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +25,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     final inset = narrow ? 20.0 : 40.0;
     return GlassScaffold(
       body: data.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: IosSpinner()),
         error: (_, _) =>
             const Center(child: Text('No se pudo cargar el catálogo.')),
         data: (items) {
