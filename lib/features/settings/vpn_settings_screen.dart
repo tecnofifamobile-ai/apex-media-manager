@@ -1,3 +1,4 @@
+import '../../core/widgets/glass.dart';
 import '../../core/widgets/remote_text_field.dart';
 import '../../core/widgets/adaptive_backdrop.dart';
 
@@ -212,7 +213,7 @@ class VpnSettingsScreen extends ConsumerWidget {
     final controller = TextEditingController();
     final config = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => GlassDialog(
         title: const Text('Configuración WireGuard'),
         content: SizedBox(
           width: 520,

@@ -31,6 +31,7 @@ class RemoteAction extends StatefulWidget {
 
 class _RemoteActionState extends State<RemoteAction> {
   bool _focused = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -79,22 +80,33 @@ class _RemoteActionState extends State<RemoteAction> {
             });
           }
         },
-        child: GestureDetector(
-          behavior: widget.behavior,
-          onTap: widget.onTap,
-          onLongPress: widget.onLongPress,
-          onSecondaryTap: widget.onSecondaryTap,
-          onDoubleTap: widget.onDoubleTap,
-          child: DecoratedBox(
-            position: DecorationPosition.foreground,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _focused ? Colors.white : Colors.transparent,
-                width: 3,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          cursor: widget.onTap == null
+              ? SystemMouseCursors.basic
+              : SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: widget.behavior,
+            onTap: widget.onTap,
+            onLongPress: widget.onLongPress,
+            onSecondaryTap: widget.onSecondaryTap,
+            onDoubleTap: widget.onDoubleTap,
+            child: DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: _focused
+                      ? Colors.white.withValues(alpha: .85)
+                      : _hovered
+                      ? Colors.white24
+                      : Colors.transparent,
+                  width: 2,
+                ),
               ),
+              child: widget.child,
             ),
-            child: widget.child,
           ),
         ),
       ),

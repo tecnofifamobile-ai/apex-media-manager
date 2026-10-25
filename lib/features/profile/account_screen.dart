@@ -1,3 +1,5 @@
+import '../../core/widgets/glass.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +14,7 @@ class AccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final local = ref.watch(localModeProvider);
     final profiles = ref.watch(profilesProvider);
-    return Scaffold(
+    return GlassScaffold(
       appBar: AppBar(title: const Text('Cuenta')),
       body: ListView(
         padding: const EdgeInsets.all(32),
@@ -31,7 +33,7 @@ class AccountScreen extends ConsumerWidget {
           ...profiles.when(
             data: (values) => values
                 .map(
-                  (profile) => ListTile(
+                  (profile) => GlassTile(
                     leading: CircleAvatar(
                       backgroundColor: Color(profile.colorCode),
                       child: const Icon(Icons.person),
@@ -52,12 +54,12 @@ class AccountScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 24),
-          ListTile(
+          GlassTile(
             leading: const Icon(Icons.people_outline),
             title: const Text('Gestionar perfiles'),
             onTap: () => context.go('/profile'),
           ),
-          ListTile(
+          GlassTile(
             leading: const Icon(Icons.logout),
             title: Text(local ? 'Volver al inicio de sesión' : 'Cerrar sesión'),
             onTap: () async {

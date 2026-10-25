@@ -8,7 +8,7 @@ const { environment, adminHeaders } = require('./env.cjs');
   for (const [abi, item] of Object.entries(manifest.android)) { urls[abi] = item.url; hashes[abi] = item.sha256; }
   const body = {
     latest_version: manifest.version,
-    release_notes: 'Android TV con mando, navegación fluida, sincronización de perfiles corregida, reproducción de películas y episodios, modo local y actualizaciones verificadas.',
+    release_notes: 'Interfaz Liquid Glass unificada: navegación flotante, tarjetas translúcidas, filtros y diálogos de calidad compactos. Estética Apple TV conservando navegación con mando y carga diferida.',
     windows_exe_url: manifest.windows.url, windows_sha256: manifest.windows.sha256,
     apk_url: urls['arm64-v8a'], apk_sha256: hashes['arm64-v8a'], apk_urls: urls, apk_sha256s: hashes,
   };

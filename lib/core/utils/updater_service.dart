@@ -1,3 +1,5 @@
+import '../widgets/glass.dart';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -38,7 +40,7 @@ class UpdaterService {
       if (url is! String || hash is! String || !context.mounted) return;
       final accepted = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
+        builder: (ctx) => GlassDialog(
           title: Text('Actualización $latest'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 450),
@@ -75,7 +77,7 @@ class UpdaterService {
     final progress = DialogRoute<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
+      builder: (_) => const GlassDialog(
         content: Row(
           children: [
             CircularProgressIndicator(),

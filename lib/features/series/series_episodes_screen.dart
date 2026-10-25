@@ -1,3 +1,5 @@
+import '../../core/widgets/glass.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +17,7 @@ class SeriesEpisodesScreen extends ConsumerWidget {
   const SeriesEpisodesScreen({super.key, required this.series});
   final VodItem series;
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+  Widget build(BuildContext context, WidgetRef ref) => GlassScaffold(
     appBar: AppBar(title: Text(series.name)),
     body: ref
         .watch(seriesEpisodesProvider(series.id))
@@ -46,7 +48,7 @@ class SeriesEpisodesScreen extends ConsumerWidget {
                       ),
                       SliverList.builder(
                         itemCount: entry.value.length,
-                        itemBuilder: (context, index) => ListTile(
+                        itemBuilder: (context, index) => GlassTile(
                           title: Text(entry.value[index].name),
                           leading: const Icon(Icons.play_circle_outline),
                           onTap: () => context.pushNamed(

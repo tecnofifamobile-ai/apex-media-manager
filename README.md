@@ -38,7 +38,7 @@ Los paquetes se publican con rutas por versión y hashes SHA-256. Los metadatos 
 
 ## Rendimiento y VPN
 
-Los canales usan slivers y construcción diferida; la sincronización no se repite en bucle; las imágenes se cargan bajo demanda con caché y concurrencia limitada; los favoritos comparten un índice y los efectos de desenfoque se desactivan en TV. La fuente Outfit se incluye localmente con su licencia.
+Los canales usan slivers y construcción diferida; la sincronización no se repite en bucle; las imágenes se cargan bajo demanda con caché y concurrencia limitada; los favoritos comparten un índice y las tarjetas comparten el desenfoque para conservar el cristal también en TV. La fuente Outfit se incluye localmente con su licencia.
 
 Si el sistema no permite abrir Isar, la app utiliza almacenamiento local compatible para perfiles y favoritos. Los archivos Isar existentes se conservan.
 
@@ -55,3 +55,7 @@ Compilados el instalador Windows y las APK ARM64, ARMv7 y x86_64. Backend verifi
 En el emulador Android TV se verificaron arranque, detección de TV, navegación, foco, catálogo y temporadas. La reproducción llegó al motor de vídeo, pero la captura permaneció negra bajo traducción ARM del emulador x86: la imagen de vídeo **queda pendiente de validar en un televisor físico**. No se ha verificado un túnel VPN real ni el arranque gráfico de Windows con UAC.
 
 `tool/tv_smoke_main.dart` es un punto de entrada exclusivo de pruebas con `tool/smoke_server.cjs`; nunca se utiliza para publicar. Los paquetes publicados se generan desde `lib/main.dart`.
+
+## Interfaz 2.2.55
+
+Liquid Glass es la referencia visual común: navegación flotante, paneles translúcidos, filtros redondeados y diálogos compactos. Ajustes conserva su diseño. Las rejillas siguen siendo diferidas y comparten el filtro de fondo para mantener el rendimiento.

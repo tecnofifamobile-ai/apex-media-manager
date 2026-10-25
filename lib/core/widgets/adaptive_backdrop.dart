@@ -2,9 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
-import '../utils/device_capabilities.dart';
-
-/// Avoid repeated GPU backdrop passes on television hardware.
+/// Preserve the frosted appearance on desktop, mobile and television.
 class AdaptiveBackdrop extends StatelessWidget {
   const AdaptiveBackdrop({
     super.key,
@@ -15,7 +13,6 @@ class AdaptiveBackdrop extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => DeviceCapabilities.isTv
-      ? ColoredBox(color: const Color(0xF2161927), child: child)
-      : BackdropFilter(filter: filter, child: child);
+  Widget build(BuildContext context) =>
+      BackdropFilter(filter: filter, child: child);
 }

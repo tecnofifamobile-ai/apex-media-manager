@@ -1,12 +1,15 @@
 # APEX Media Manager (formerly ESPTV Player)
 
 ## Tech Stack
-- **Current release**: 2.2.54+54. Windows, Android mobile and Android TV share one Flutter app.
+- **Current release**: 2.2.55+55. Windows, Android mobile and Android TV share one Flutter app.
 - **Framework**: Flutter (Android & Windows Desktop)
 - **State Management**: Riverpod (`ConsumerWidget`, `Provider`, `FutureProvider`)
 - **Backend / Database**: Supabase (PostgreSQL `app_settings` for OTA updates)
 - **VPN**: `wireguard_flutter` + WGCF (Cloudflare WARP)
 - **Windows Installer**: Inno Setup (`installer.iss`)
+
+## Visual direction
+- Preserve the polished glass UI. Apple TV / Snappier reference: floating pill navigation, translucent layered cards, soft white borders and compact frosted dialogs. Settings is the visual baseline. Never substitute opaque Material rails or flat cards for performance fixes.
 
 ## Revival notes (2026-10-25)
 - Active Supabase project: `daozombwhujwomhuaryq`. The former project no longer resolves. Only the publishable key belongs in the client; `.env.local` holds administrative credentials and must never be committed.
@@ -14,7 +17,7 @@
 - `ProfileStore` separates persistence from UI state. Each profile load performs at most one remote sync. Local mode works without a cloud login.
 - `isar` is nullable: if native MDBX fails on a device/runtime, profiles and favourites use a separate SharedPreferences cache. Preserve existing native database files; never crash startup or erase user data to recover.
 - Channel grids use lazy slivers; never nest a shrink-wrapped grid under a list for large playlists. Do not preload the entire logo database. Image downloads are cached, deduplicated and limited to six concurrent requests.
-- TV detection uses `apex/device`; `RemoteAction` provides directional focus, activation and automatic visibility. `AdaptiveBackdrop` removes backdrop passes on TV. Keep all actions reachable by remote and retain mobile/desktop pointer controls.
+- TV detection uses `apex/device`; `RemoteAction` provides directional focus, activation and automatic visibility. Preserve the Liquid Glass appearance on TV as well; use shared backdrop groups on lazy card grids. Keep all actions reachable by remote and retain mobile/desktop pointer controls.
 - Movie cards open VOD playback; series open a season/episode screen. Player subscriptions and focus nodes are disposed, and remote/media keys control playback.
 - HTTPS certificate validation is enabled. Never restore global certificate-acceptance callbacks. HTTP IPTV sources remain supported. Updates require HTTPS and SHA-256 verification.
 - Outfit is bundled locally, so fonts do not trigger network downloads. Experimental diagnostics in the root and generated Isar files are excluded from normal analysis.

@@ -186,12 +186,12 @@ class _HoverAvatarState extends State<_HoverAvatar> {
                   ? (Matrix4.identity()..scaleByDouble(1.05, 1.05, 1.0, 1.0))
                   : Matrix4.identity(),
               decoration: BoxDecoration(
-                color: widget.color,
+                color: widget.color.withValues(alpha: .28),
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isHovered
                       ? Colors.white.withValues(alpha: 0.8)
-                      : Colors.transparent,
+                      : Colors.white12,
                   width: isHovered ? 3 : 0,
                 ),
                 boxShadow: isHovered

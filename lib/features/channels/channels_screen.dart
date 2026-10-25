@@ -1,3 +1,4 @@
+import '../../core/widgets/glass.dart';
 import '../../core/widgets/remote_text_field.dart';
 
 import 'dart:async';
@@ -10,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/models/iptv_models.dart';
 import '../../core/utils/updater_service.dart';
-import '../../core/utils/wallpaper_provider.dart';
+
 import '../../core/widgets/remote_action.dart';
 import '../favorites/providers/favorites_provider.dart';
 import '../iptv_parser/providers/iptv_provider.dart';
@@ -66,16 +67,35 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
   Future<void> _chooseQuality(ChannelGroup group) async {
     final selected = await showDialog<Channel>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(channelDisplayName(group.channels.first.name)),
+      builder: (ctx) => GlassDialog(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Calidad de reproducción',
+              style: TextStyle(fontSize: 13, color: Colors.white54),
+            ),
+            const SizedBox(height: 8),
+            Text(channelDisplayName(group.channels.first.name)),
+          ],
+        ),
         content: SizedBox(
           width: 420,
-          height: 320,
+          height: (group.channels.length * 68.0).clamp(68.0, 340.0),
           child: ListView.builder(
             itemCount: group.channels.length,
             itemBuilder: (ctx, index) => ListTile(
               autofocus: index == 0,
-              title: Text(group.channels[index].name),
+              title: Text(
+                group.channels[index].name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              focusColor: const Color(0x20FFFFFF),
               trailing: const Icon(Icons.play_arrow),
               onTap: () => Navigator.pop(ctx, group.channels[index]),
             ),
@@ -100,20 +120,10 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
     final channels = ref.watch(channelsProvider);
     final sections = ref.watch(channelSectionsProvider);
     final logoDb = ref.watch(logoDatabaseProvider).value ?? <String, String>{};
-    final wallpaper = ref.watch(wallpaperProvider);
-    return Scaffold(
+
+    return GlassScaffold(
       body: Stack(
         children: [
-          Positioned.fill(
-            child: RepaintBoundary(
-              child: Image.asset(
-                wallpaper,
-                fit: BoxFit.cover,
-                cacheWidth: 1280,
-              ),
-            ),
-          ),
-          const Positioned.fill(child: ColoredBox(color: Color(0xBB0D0F16))),
           Column(
             children: [
               _filters(),
@@ -201,7 +211,7 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
     final category = ref.watch(categoryFilterProvider);
     final platform = ref.watch(platformFilterProvider);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
       child: Wrap(
         spacing: 12,
         runSpacing: 8,
@@ -264,9 +274,24 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
         (option) => PopupMenuItem(value: option, child: Text(option)),
       ),
     ],
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Text('$label: ${value ?? "Todos"} ▾'),
+    child: GlassSurface(
+      radius: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value ?? label,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          const SizedBox(width: 10),
+          const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 17,
+            color: Colors.white54,
+          ),
+        ],
+      ),
     ),
   );
 
@@ -283,8 +308,10 @@ class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
       onTap: () => _openGroup(group),
       onLongPress: () => _chooseQuality(group),
       onSecondaryTap: () => _chooseQuality(group),
-      child: Card(
-        color: const Color(0xDD1E2132),
+      child: GlassSurface(
+        radius: 24,
+        blur: true,
+        grouped: true,
         child: Stack(
           children: [
             Padding(

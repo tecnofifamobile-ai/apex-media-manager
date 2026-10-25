@@ -1,3 +1,5 @@
+import '../../core/widgets/glass.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -256,8 +258,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                 if (_showControls)
                   Positioned.fill(
-                    child: ColoredBox(
-                      color: const Color(0x66000000),
+                    child: DecoratedBox(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xA0000000),
+                            Color(0x00000000),
+                            Color(0xC0000000),
+                          ],
+                          stops: [0, .45, 1],
+                        ),
+                      ),
                       child: Column(
                         children: [
                           Row(
@@ -360,7 +373,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                       _open(channels[index]);
                                       _restartTimer();
                                     },
-                                    child: Card(
+                                    child: GlassSurface(
                                       child: Center(
                                         child: Padding(
                                           padding: const EdgeInsets.all(8),

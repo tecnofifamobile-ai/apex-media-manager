@@ -1,3 +1,4 @@
+import '../../core/widgets/glass.dart';
 import '../../core/widgets/remote_text_field.dart';
 import '../channels/channel_groups.dart';
 import '../../core/widgets/adaptive_backdrop.dart';
@@ -53,8 +54,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     final tc = TextEditingController(text: fav.category);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E2132),
+      builder: (ctx) => GlassDialog(
         title: const Text(
           'Cambiar Categoría',
           style: TextStyle(color: Colors.white),
@@ -100,8 +100,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   void _showOptionsDialog(FavoriteChannelData data) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E2132),
+      builder: (ctx) => GlassDialog(
         title: Text(
           'Opciones: ${formatTitle(data.variants.first.name)}',
           style: const TextStyle(color: Colors.white),

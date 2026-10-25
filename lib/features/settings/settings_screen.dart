@@ -106,7 +106,7 @@ class SettingsScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: const Center(
                   child: Text(
-                    'APEX Media Manager - 2.2.54',
+                    'APEX Media Manager - 2.2.55',
                     style: TextStyle(
                       color: Colors.white38,
                       fontSize: 13,
